@@ -1,4 +1,4 @@
-from OrgAnalyze.ParserOrg import ParserOrg, OrgHeader, OrgClock
+from org_analyze.ParserOrg import ParserOrg, OrgHeader, OrgClock
 import os
 from collections import defaultdict
 
@@ -20,7 +20,7 @@ def read_org_clocks(directory, group_top_level=False):
             continue
         headers = [None, None, None, None]
         header_level = 0
-        with ParserOrg(org_dir + "/" + fname) as p:
+        with ParserOrg(directory + "/" + fname) as p:
             for item in p.parse():
                 if isinstance(item, OrgHeader):
                     headers[item.level - 1] = item.name
