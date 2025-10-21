@@ -32,6 +32,36 @@ def read_org_clocks(directory, group_top_level=False):
                     rows.append([item.start, time_str_to_hours(item.duration), task])
     return rows
 
+def read_org_clocks_2(directory: str):
+    """Reads all .org files in the given directory and extracts clock entries.
+    Returns a list of rows: [start, duration, head1, head2]
+    If there is only head1, head2 is empty.
+    """
+    rows = []
+    for fname in os.listdir(directory):
+        if not fname.endswith(".org"):
+            continue
+        headers = [None, None, None, None]
+        header_level = 0
+        with ParserOrg(directory + "/" + fname) as p:
+            for item in p.parse():
+                if isinstance(item, OrgHeader):
+                    headers[item.level - 1] = item.name
+                    header_level = item.level
+                if isinstance(item, OrgClock):
+                    if header_level == 1:
+                        head1 = headers[0] if headers[0] is not None else ""
+                        head2 = ""
+                    elif header_level >= 2:
+                        head1 = headers[0] if headers[0] is not None else ""
+                        head2 = headers[1] if headers[1] is not None else ""
+                    else:
+                        head1 = ""
+                        head2 = ""
+                    rows.append([item.start, time_str_to_hours(item.duration), head1, head2])
+    columns =['start', 'duration', 'head1', 'head2']
+    return columns, rows
+
 def group_daily_tasks(rows):
     """
     Groups rows by date and returns a list of daily summaries.

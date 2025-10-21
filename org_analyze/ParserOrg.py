@@ -15,6 +15,9 @@ from typing import IO, List, Sequence, Tuple, Union, Optional
 import os
 
 clock_re = re.compile(r"CLOCK: \[(\d{4}-\d{2}-\d{2}) [^\]]+\]--\[.*?\] =>\s+([\d:]+)")
+clk_re = re.compile(
+    r"^\#\+CLK:\s*\[(\d{4}-\d{2}-\d{2})\s+[A-Za-z]{3}\s+(\d{1,2}:\d{2})\]"
+)
 header_re = re.compile(r"^(\*+)\s+(?:TODO\s+|DONE\s+)?(.*)")
 
 class OrgHeader:
@@ -35,7 +38,9 @@ class OrgClock:
     def __init__(self, line: str) -> None:
         m = clock_re.match(line)
         if not m:
-            raise ValueError(f"Invalid CLOCK line: {line}")
+            m = clk_re.match(line)
+            if not m:
+                raise ValueError(f"Invalid CLOCK line: {line}")
         self.start = m.groups(1)[0]  # YYYY-MM-DD
         self.duration = m.groups(1)[1]  # HH:MM
 
@@ -189,7 +194,7 @@ class ParserOrg:
                 cur_header = self.parse_header(line)
                 self.items.append(cur_header)
 
-            elif line.startswith("CLOCK:"):
+            elif line.startswith("CLOCK:") or line.startswith("#+CLK:"):
                 self.items.append(OrgClock(line))
 
             elif line.startswith("#+"):
