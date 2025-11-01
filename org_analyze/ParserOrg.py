@@ -6,7 +6,6 @@ Improvements over the original:
 - Context manager support (use `with ParserOrg(...) as p:`).
 - Safer parsing of headers, tables and variables.
 - Returns parsed items from `parse()` and stores vars on `vars`.
-- Backwards-compatible alias `ParseOrg` preserved.
 """
 
 import logging
@@ -14,18 +13,21 @@ import re
 from typing import IO, List, Sequence, Tuple, Union, Optional
 import os
 
-clock_re = re.compile(r"CLOCK: \[(\d{4}-\d{2}-\d{2}) [^\]]+\]--\[.*?\] =>\s+([\d:]+)")
-clk_re = re.compile(
-    r"^\#\+CLK:\s*\[(\d{4}-\d{2}-\d{2})\s+[A-Za-z]{3}\s+(\d{1,2}:\d{2})\]"
-)
-header_re = re.compile(r"^(\*+)\s+(?:TODO\s+|DONE\s+)?(.*)")
 
 class OrgHeader:
     """Represents an org-mode header (a line starting with one or more '*')."""
-    def __init__(self, level: int, name: str) -> None:
-        self.level = level
-        self.name = name.strip()
+    header_re = re.compile(r"^(\*+)\s+(?:TODO\s+|DONE\s+)?(.*)")
+
+    def __init__(self, line: str) -> None:
         self.items: List[object] = []
+
+        m = self.header_re.match(line)
+        if m:
+            self.level = len(m.group(1))
+            self.name = m.group(2) or ""
+        else: # fallback: treat whole line as name with level 0
+            self.level = 0
+            self.name = line.strip()
 
     def add(self, child: object) -> None:
         self.items.append(child)
@@ -35,10 +37,14 @@ class OrgHeader:
 
 class OrgClock:
     """Represents a CLOCK entry."""
+    clock_re = re.compile(r"CLOCK: \[(\d{4}-\d{2}-\d{2}) [^\]]+\]--\[.*?\] =>\s+([\d:]+)")
+    clk_re = re.compile(
+        r"^\#\+CLK:\s*\[(\d{4}-\d{2}-\d{2})\s+[A-Za-z]{3}\s+(\d{1,2}:\d{2})\]"
+    )
     def __init__(self, line: str) -> None:
-        m = clock_re.match(line)
+        m = self.clock_re.match(line)
         if not m:
-            m = clk_re.match(line)
+            m = self.clk_re.match(line)
             if not m:
                 raise ValueError(f"Invalid CLOCK line: {line}")
         self.start = m.groups(1)[0]  # YYYY-MM-DD
@@ -58,6 +64,22 @@ class OrgTable:
     def __repr__(self) -> str:
         return f"<Table rows={len(self.rows)}>"
 
+class OrgSourceBlock:
+    """Represents a source code block."""
+    def __init__(self, lines: List[str]) -> None:
+        self.lines = lines[1:-1]  # exclude the begin/end lines
+        self.language = lines[0].strip(" ").split()[1] if lines else "unknown"
+
+    def __repr__(self) -> str:
+        return f"<SourceBlock lang={self.language} lines={len(self.lines)}>"
+
+class OrgText:
+    """Represents a plain text paragraph."""
+    def __init__(self, line: str) -> None:
+        self.line = line
+
+    def __repr__(self) -> str:
+        return f"<Text '{self.line}'>"
 
 class ParserOrg:
     """Parser for a tiny subset of Emacs org-mode used by this project.
@@ -101,9 +123,6 @@ class ParserOrg:
             except Exception:
                 logging.exception("Failed to close org file")
 
-    # keep backwards-compatible name
-    ParseOrg = None
-
     def parse_table(self, line: str) -> OrgTable:
         """Parse consecutive table lines starting from `line` (which should
         start with '|'). Returns an OrgTable object. The file pointer will be
@@ -140,15 +159,12 @@ class ParserOrg:
 
         return tbl
 
-    def parse_header(self, line: str) -> OrgHeader:
-        """Parse a header line like "*** Heading text" into an OrgHeader."""
-        m = re.match(r"^(\*+)(?:\s+(.+))?", line)
-        if m:
-            level = len(m.group(1))
-            name = m.group(2) or ""
-            return OrgHeader(level, name)
-        # fallback: treat whole line as name with level 0
-        return OrgHeader(0, line.strip())
+    def _is_property_line(self, line: str) -> bool:
+        """Check if the line is a property line (starts with ':PROPERTY:')."""
+        if not line.startswith(":"):
+            return False
+        match = re.search(r":[A-Z]+:", line)
+        return match and match.start() == 0
 
     def parse(self) -> List[object]:
         """Parse the opened file and return a list of top-level items.
@@ -189,14 +205,24 @@ class ParserOrg:
                 table = self.parse_table(line)
                 cur_header.add(table)
 
-            elif line.startswith("*"):
-                # header
-                cur_header = self.parse_header(line)
+            elif line.startswith("*"):  # header
+                cur_header = OrgHeader(line)
                 self.items.append(cur_header)
 
             elif line.startswith("CLOCK:") or line.startswith("#+CLK:"):
                 self.items.append(OrgClock(line))
 
+            elif line.lower().startswith("#+begin_src"):
+                lines = [line]
+                while line and not line.lower().startswith("#+end_src"):
+                    line = self._f.readline()
+                    if len(line) == 0:
+                        break
+                    lines.append(line.rstrip("\n"))
+                self.items.append(OrgSourceBlock(lines))
+
+            elif self._is_property_line(line):
+                pass # skip property lines
             elif line.startswith("#+"):
                 # file variable - split at first ':' for safety
                 tail = line[2:]
@@ -207,9 +233,7 @@ class ParserOrg:
                     logging.debug("Unrecognized variable line: %r", line)
 
             else:
-                logging.debug("Invalid org item: %r", line)
+                self.items.append(OrgText(line))
 
-        # close the file if we opened it
         self.close()
         return self.items
-
