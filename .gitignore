@@ -1,3 +1,4 @@
 dist
+tmp/
 __pycache__/
 org_analyze.egg-info/

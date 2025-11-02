@@ -81,6 +81,30 @@ class OrgText:
     def __repr__(self) -> str:
         return f"<Text '{self.line}'>"
 
+class OrgMath:
+    """Represents a math block."""
+    def __init__(self, lines: List[str]) -> None:
+        self.lines = lines[1:-1]  # exclude the begin/end lines
+
+    def __repr__(self) -> str:
+        return f"<Math lines={len(self.lines)}>"
+
+class OrgProperties:
+    """Represents a PROPERTIES block."""
+    property_re = re.compile(r"^:([a-zA-Z0-9_\-]+):\s*(.*)")
+    def __init__(self, lines: List[str]) -> None:
+        self.values = {}
+        for line in lines[:-1]:
+            m = self.property_re.match(line)
+            if m:
+                key = m.group(1).strip().lower()
+                value = m.group(2).strip()
+                self.values[key] = value
+                # setattr(self, key, value)
+
+    def __repr__(self) -> str:
+        return f"<Properties lines={len(self.lines)}>"
+
 class ParserOrg:
     """Parser for a tiny subset of Emacs org-mode used by this project.
 
@@ -97,10 +121,12 @@ class ParserOrg:
     beginning with '|') and file-local variables (lines starting with '#+').
     """
 
-    def __init__(self, source: Union[str, os.PathLike, IO[str]]) -> None:
+    org_link_re = re.compile(r"\[\[([^\[\]]+)\](?:\[([^\[\]]+)\])?\]")
+
+    def __init__(self, source: Union[str, os.PathLike, IO[str]], link_converter=None) -> None:
         if isinstance(source, (str, os.PathLike)):
             # open file ourselves
-            self._f = open(str(source), "rt", encoding="utf-8")
+            self._f = open(str(source), "rt", encoding="utf-8", errors="replace")
             self._own_file = True
         else:
             # assume file-like object
@@ -109,6 +135,7 @@ class ParserOrg:
 
         self.items: List[object] = []
         self.vars: dict = {}
+        self.link_converter = link_converter
 
     def __enter__(self) -> "ParserOrg":
         return self
@@ -122,6 +149,18 @@ class ParserOrg:
                 self._f.close()
             except Exception:
                 logging.exception("Failed to close org file")
+
+    def parse_links(self, line: str) -> str:
+        """Parse org-mode links in the given line using the link_converter."""
+        if self.link_converter is None:
+            return line
+
+        def repl(m: re.Match) -> str:
+            link = m.group(1)
+            name = m.group(2) if m.group(2) is not None else link
+            return self.link_converter(link, name)
+
+        return self.org_link_re.sub(repl, line)
 
     def parse_table(self, line: str) -> OrgTable:
         """Parse consecutive table lines starting from `line` (which should
@@ -220,7 +259,20 @@ class ParserOrg:
                         break
                     lines.append(line.rstrip("\n"))
                 self.items.append(OrgSourceBlock(lines))
-
+            elif line.strip() == "\[":
+                lines = [line]
+                while line and not line.strip()== "\]":
+                    line = self._f.readline()
+                    if len(line) == 0:
+                        break
+                    lines.append(line.rstrip("\n"))
+                self.items.append(OrgMath(lines))
+            elif line.strip() == ":PROPERTIES:":
+                properties = []
+                while line and not line.strip() == ":END:":
+                    line = self._f.readline()
+                    properties.append(line.strip())
+                self.items.append(OrgProperties(properties))
             elif self._is_property_line(line):
                 pass # skip property lines
             elif line.startswith("#+"):
@@ -233,7 +285,7 @@ class ParserOrg:
                     logging.debug("Unrecognized variable line: %r", line)
 
             else:
-                self.items.append(OrgText(line))
+                self.items.append(OrgText(self.parse_links(line)))
 
         self.close()
         return self.items
