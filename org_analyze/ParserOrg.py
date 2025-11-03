@@ -19,8 +19,6 @@ class OrgHeader:
     header_re = re.compile(r"^(\*+)\s+(?:TODO\s+|DONE\s+)?(.*)")
 
     def __init__(self, line: str) -> None:
-        self.items: List[object] = []
-
         m = self.header_re.match(line)
         if m:
             self.level = len(m.group(1))
@@ -29,11 +27,8 @@ class OrgHeader:
             self.level = 0
             self.name = line.strip()
 
-    def add(self, child: object) -> None:
-        self.items.append(child)
-
     def __repr__(self) -> str:
-        return f"<H{self.level} {self.name!r} childs={len(self.items)}>"
+        return f"<H{self.level} {self.name!r}>"
 
 class OrgClock:
     """Represents a CLOCK entry."""
@@ -61,6 +56,17 @@ class OrgTable:
     def add_row(self, row: Sequence[str]) -> None:
         self.rows.append(list(row))
 
+    def getDictRows(self) -> List[dict]:
+        """Return table rows as list of dicts, using the first row as keys."""
+        if not self.rows:
+            return []
+        keys = self.rows[0]
+        dict_rows = []
+        for row in self.rows[1:]:
+            row_dict = {keys[i]: row[i] if i < len(row) else "" for i in range(len(keys))}
+            dict_rows.append(row_dict)
+        return dict_rows
+    
     def __repr__(self) -> str:
         return f"<Table rows={len(self.rows)}>"
 
@@ -214,7 +220,6 @@ class ParserOrg:
         # Reset state
         self.items = []
         self.vars = {}
-        cur_header: Optional[OrgHeader] = None
         self._last_line = None
 
         while True:
@@ -235,18 +240,11 @@ class ParserOrg:
 
             if line.lstrip().startswith("|"):
                 # table
-                if cur_header is None:
-                    # create a root header so existing callers that expect
-                    # tables to be under headers still work
-                    cur_header = OrgHeader(0, "")
-                    self.items.append(cur_header)
-
                 table = self.parse_table(line)
-                cur_header.add(table)
+                self.items.append(table)
 
             elif line.startswith("*"):  # header
-                cur_header = OrgHeader(line)
-                self.items.append(cur_header)
+                self.items.append(OrgHeader(line))
 
             elif line.startswith("CLOCK:") or line.startswith("#+CLK:"):
                 self.items.append(OrgClock(line))
