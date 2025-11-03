@@ -7,7 +7,30 @@ Items parsed:
  - Headers starting with "*", "**", etc. as OrgHeader
  - Tables starting with "|", as OrgTable
 
-## read_org_clocks_2
+## export_org_to_markdown from org2md
+
+Converts an org-mode file into a list of Markdown strings. It handles various org elements like headers, tables, source code blocks, and text.
+
+### Conversion Rules
+-   **Headers**: `* Header` becomes `# Header`, `** Sub-header` becomes `## Sub-header`, and so on.
+-   **Tables**: Org-mode tables are converted to Markdown tables.
+-   **Source Blocks**: `#+BEGIN_SRC language ... #+END_SRC` becomes a fenced code block in Markdown (```` ```language ... ``` ````).
+-   **Math Blocks**: `\[ ... \]` becomes a fenced math block.
+-   **Links**: Org-mode links are converted. `[[id:some-id][My Link]]` becomes `[[My Link]]` and `[[https://example.com][Example]]` becomes `[Example](https://example.com)`.
+-   **Text**: Plain text lines are preserved.
+-   **Ignored**: `CLOCK`, `PROPERTIES` blocks are currently ignored in the output.
+
+### Example
+```python
+from org_analyze.org2md import export_org_to_markdown
+
+markdown_lines = export_org_to_markdown('example.org')
+for line in markdown_lines:
+    print(line)
+
+```
+
+## read_org_clocks_2 from clocks
 
 This function parses all `*.org` files in a given directory. It extracts all clocking information and associates it with its parent header (Feature) and sub-header (Task).
 
