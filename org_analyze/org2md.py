@@ -6,7 +6,7 @@ def link_converter(link: str, name: str) -> str:
         return f"[[{name}]]"
     return f"[{name}]({link})"
 
-def export_org_to_markdown(orgfile: str) -> List[str]:
+def export_markdown(orgfile: str) -> List[str]:
     result: List[str] = []
     with ParserOrg(orgfile, link_converter) as p:
         for item in p.parse():

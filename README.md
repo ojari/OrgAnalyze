@@ -2,10 +2,18 @@
 
 Collect data from org-mode/org-roam pages and do some simple analyzing it
 
-Items parsed:
- - Lines starting with "CLOCK:" or "#+CLK:" as OrgClock
- - Headers starting with "*", "**", etc. as OrgHeader
- - Tables starting with "|", as OrgTable
+### Items Parsed by `ParserOrg`
+
+The parser processes the following org-mode elements, turning them into specific Python objects:
+
+-   **Headers**: Lines starting with `*`, `**`, etc. are parsed as `OrgHeader` objects.
+-   **Clock Entries**: Lines starting with `CLOCK:` or `#+CLK:` are parsed as `OrgClock` objects.
+-   **Tables**: Blocks of lines starting with `|` are parsed into `OrgTable` objects.
+-   **Source Blocks**: Code blocks delimited by `#+BEGIN_SRC` and `#+END_SRC` are parsed as `OrgSourceBlock`.
+-   **Math Blocks**: LaTeX math blocks delimited by `\[` and `\]` are parsed as `OrgMath`.
+-   **Property Drawers**: Blocks delimited by `:PROPERTIES:` and `:END:` are parsed as `OrgProperties`.
+-   **File Variables**: Lines like `#+TITLE: My Document` are parsed and stored in the parser's `vars` dictionary.
+-   **Text and Links**: All other lines are treated as plain text (`OrgText`), with org-mode links like `[[...]]` being processed.
 
 ## export_org_to_markdown from org2md
 
@@ -24,7 +32,7 @@ Converts an org-mode file into a list of Markdown strings. It handles various or
 ```python
 from org_analyze.org2md import export_org_to_markdown
 
-markdown_lines = export_org_to_markdown('example.org')
+markdown_lines = export_markdown('example.org')
 for line in markdown_lines:
     print(line)
 
@@ -56,10 +64,10 @@ You can parse this file and analyze the data with pandas like this:
 
 ```python
 import pandas as pd
-from org_analyze.clocks import read_org_clocks_2
+from org_analyze.clocks import read_clockins
 
 # 1. Parse the org files in the directory
-columns, rows = read_org_clocks_2('my_orgs')
+columns, rows = read_clockins('my_orgs')
 
 # 2. Create a pandas DataFrame
 df = pd.DataFrame(rows, columns=columns)
