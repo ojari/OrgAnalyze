@@ -25,6 +25,7 @@
     <Compile Include="org_analyze/ParserOrg.py" />
     <Compile Include="org_analyze/org2md.py" />
     <Compile Include="org_analyze/clocks.py" />
+    <Compile Include="org_analyze\org2html.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="org_analyze\" />

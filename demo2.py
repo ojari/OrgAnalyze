@@ -1,9 +1,13 @@
 # Converts Org-roam database to Markdown files.
 #
-from org_analyze import export_markdown
+# from org_analyze import export_markdown as export
+from org_analyze import export_html as export
 import os
 import sqlite3
 from typing import List
+
+#EXTENSION = ".md"
+EXTENSION = ".html"
 
 class Node:
     def __init__(self, id: str, title: str, file: str):
@@ -46,26 +50,35 @@ class MarkdownConverter:
     def __init__(self, nodes: List[Node]):
         self.nodes = nodes
 
+    @staticmethod
+    def link(link: str, name: str) -> str:
+        if EXTENSION == ".html":
+            if not (link.endswith(".html") or link.startswith("http")):
+                link += ".html"
+            return f"<a href=\"{link}\">{name}</a>"
+        return f"[{name}]({link})"
+
     def md_link_converter(self, link: str, name: str) -> str:
         if link.startswith("id:"):
             hash = link[3:]
             roam_node = next((node for node in self.nodes if node.id == hash), None)
             if roam_node is not None:
-                return f"[[{roam_node.base_name()}]]"
-            return f"[[{name}]]"
-        return f"[{name}]({link})"
+                return self.link(roam_node.base_name(), name)
+                # return f"[[{roam_node.base_name()}]]"
+            return link(name, name)
+        return self.link(link, name)
 
     def handle_file(self, org_file: str, md_file: str) -> None:
         print(f"Processing file: {org_file} -> {md_file}")
         with open(md_file, "w", encoding="utf-8") as md_file_obj:
-            for line in export_markdown(org_file, self.md_link_converter):
+            for line in export(org_file, self.md_link_converter):
                 md_file_obj.write(line + "\n")
 
     def handle_folder(self, source_base: str, folder: str) -> None:
         for file in os.listdir(os.path.join(source_base, folder)):
             if file.endswith(".org"):
                 print(f"{file}...")
-                md_filename = os.path.splitext(file)[0] + ".md"
+                md_filename = os.path.splitext(file)[0] + EXTENSION
                 self.handle_file(
                     os.path.join(source_base, folder, file),
                     os.path.join("tmp", folder, md_filename))
@@ -89,9 +102,8 @@ def main():
     converter = MarkdownConverter(roam_db.nodes)
 
     for file in roam_db.files:
-        md_filename = os.path.join("tmp", file.replace(".org", ".md"))
+        md_filename = os.path.join("tmp", file.replace(".org", EXTENSION))
         org_filename = os.path.join("..", "org-roam", file)
-        print(f"Processing file: {org_filename} -> {md_filename}...")
         converter.handle_file(org_filename, md_filename)
 
 
