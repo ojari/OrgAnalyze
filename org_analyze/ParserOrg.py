@@ -211,6 +211,20 @@ class ParserOrg:
         match = re.search(r":[A-Z]+:", line)
         return match and match.start() == 0
 
+    @staticmethod
+    def replace_inline_code(line: str) -> str:
+        # Replace ~...~ with `...`
+        return re.sub(r'~([^~]+)~', r'`\1`', line)
+
+    @staticmethod
+    def replace_bold(line: str) -> str:
+        # Replace *bold* with **bold**, but not at the start of the line (to avoid headers)
+        return re.sub(r'(?<!^)\*(\S(.*?\S)?)\*(?!\*)', r'**\1**', line)
+
+    def parse_line(self, line: str) -> str:
+        """Parse a single line and return the processed line."""
+        return self.replace_bold(self.replace_inline_code(line))
+
     def parse(self) -> List[object]:
         """Parse the opened file and return a list of top-level items.
 
@@ -283,7 +297,7 @@ class ParserOrg:
                     logging.debug("Unrecognized variable line: %r", line)
 
             else:
-                self.items.append(OrgText(self.parse_links(line)))
+                self.items.append(OrgText(self.parse_line(self.parse_links(line))))
 
         self.close()
         return self.items

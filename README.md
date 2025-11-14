@@ -15,7 +15,7 @@ The parser processes the following org-mode elements, turning them into specific
 -   **File Variables**: Lines like `#+TITLE: My Document` are parsed and stored in the parser's `vars` dictionary.
 -   **Text and Links**: All other lines are treated as plain text (`OrgText`), with org-mode links like `[[...]]` being processed.
 
-## export_org_to_markdown from org2md
+## export_markdown from org2md
 
 Converts an org-mode file into a list of Markdown strings. It handles various org elements like headers, tables, source code blocks, and text.
 
@@ -30,7 +30,7 @@ Converts an org-mode file into a list of Markdown strings. It handles various or
 
 ### Example
 ```python
-from org_analyze.org2md import export_org_to_markdown
+from org_analyze.org2md import export_markdown
 
 markdown_lines = export_markdown('example.org')
 for line in markdown_lines:
@@ -38,7 +38,7 @@ for line in markdown_lines:
 
 ```
 
-## read_org_clocks_2 from clocks
+## read_clockins from clocks
 
 This function parses all `*.org` files in a given directory. It extracts all clocking information and associates it with its parent header (Feature) and sub-header (Task).
 
