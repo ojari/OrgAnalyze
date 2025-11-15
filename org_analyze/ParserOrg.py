@@ -111,6 +111,25 @@ class OrgProperties:
     def __repr__(self) -> str:
         return f"<Properties lines={len(self.lines)}>"
 
+
+class Formatter:
+    def bold(self, text: str) -> str:
+        raise NotImplementedError
+    def inline_code(self, text: str) -> str:
+        raise NotImplementedError
+
+class MarkdownFormatter(Formatter):
+    def bold(self, text: str) -> str:
+        return f"**{text}**"
+    def inline_code(self, text: str) -> str:
+        return f"`{text}`"
+
+class HtmlFormatter(Formatter):
+    def bold(self, text: str) -> str:
+        return f"<strong>{text}</strong>"
+    def inline_code(self, text: str) -> str:
+        return f"<code>{text}</code>"
+
 class ParserOrg:
     """Parser for a tiny subset of Emacs org-mode used by this project.
 
@@ -129,7 +148,7 @@ class ParserOrg:
 
     org_link_re = re.compile(r"\[\[([^\[\]]+)\](?:\[([^\[\]]+)\])?\]")
 
-    def __init__(self, source: Union[str, os.PathLike, IO[str]], link_converter=None) -> None:
+    def __init__(self, source: Union[str, os.PathLike, IO[str]], link_converter=None, formatter=None) -> None:
         if isinstance(source, (str, os.PathLike)):
             # open file ourselves
             self._f = open(str(source), "rt", encoding="utf-8", errors="replace")
@@ -142,6 +161,7 @@ class ParserOrg:
         self.items: List[object] = []
         self.vars: dict = {}
         self.link_converter = link_converter
+        self.formatter = formatter or MarkdownFormatter()
 
     def __enter__(self) -> "ParserOrg":
         return self
@@ -211,15 +231,17 @@ class ParserOrg:
         match = re.search(r":[A-Z]+:", line)
         return match and match.start() == 0
 
-    @staticmethod
-    def replace_inline_code(line: str) -> str:
+    def replace_inline_code(self, line: str) -> str:
         # Replace ~...~ with `...`
-        return re.sub(r'~([^~]+)~', r'`\1`', line)
+        def repl(m):
+            return self.formatter.inline_code(m.group(1))
+        return re.sub(r'~([^~]+)~', repl, line)
 
-    @staticmethod
-    def replace_bold(line: str) -> str:
+    def replace_bold(self, line: str) -> str:
         # Replace *bold* with **bold**, but not at the start of the line (to avoid headers)
-        return re.sub(r'(?<!^)\*(\S(.*?\S)?)\*(?!\*)', r'**\1**', line)
+        def repl(m):
+            return self.formatter.bold(m.group(1))
+        return re.sub(r'(?<!^)\*(\S(.*?\S)?)\*(?!\*)', repl, line)
 
     def parse_line(self, line: str) -> str:
         """Parse a single line and return the processed line."""

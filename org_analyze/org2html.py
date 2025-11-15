@@ -1,4 +1,4 @@
-from .ParserOrg import ParserOrg, OrgHeader, OrgClock, OrgTable, OrgSourceBlock, OrgText, OrgMath, OrgProperties
+from .ParserOrg import ParserOrg, HtmlFormatter, OrgHeader, OrgClock, OrgTable, OrgSourceBlock, OrgText, OrgMath, OrgProperties
 from typing import List, Sequence, Tuple, Union, Optional
 
 def link_converter(link: str, name: str) -> str:
@@ -14,6 +14,16 @@ def add_header(title: str) -> List[str]:
         f"<meta charset=\"utf-8\">",
         f"<title>{title}</title>",
         '<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>',
+        "<style>",
+        "body { background: #3F3F3F; color: #DCDCCC; font-family: 'Segoe UI', 'Arial', sans-serif; }",
+        "h1, h2, h3, h4, h5, h6 { color: #F0DFAF; }",
+        "table { background: #4F4F4F; color: #DCDCCC; border-collapse: collapse; }",
+        "th, td { border: 1px solid #6F6F6F; padding: 4px 8px; }",
+        "th { background: #5F5F5F; color: #F0DFAF; }",
+        "pre, code { background: #2B2B2B; color: #CC9393; font-family: 'Fira Mono', 'Consolas', 'Monaco', monospace; }",
+        ".math { background: #2B2B2B; color: #DFAF8F; padding: 8px; display: block; }",
+        "a { color: #93E0E3; }",
+        "</style>",
         "</head>",
         "<body>"
     ]
@@ -29,7 +39,7 @@ def export_html(orgfile: str, lnconv=None) -> List[str]:
     result: List[str] = add_header("Org Export")
     if lnconv is None:
         lnconv = link_converter
-    with ParserOrg(orgfile, lnconv) as p:
+    with ParserOrg(orgfile, lnconv, HtmlFormatter()) as p:
         for item in p.parse():
             if isinstance(item, OrgHeader):
                 result.append(f"<h{item.level}>{item.name}</h{item.level}>")
