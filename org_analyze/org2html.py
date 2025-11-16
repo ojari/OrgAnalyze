@@ -1,3 +1,4 @@
+from re import I
 from .ParserOrg import ParserOrg, HtmlFormatter, OrgHeader, OrgClock, OrgTable, OrgSourceBlock, OrgText, OrgMath, OrgProperties
 from typing import List, Sequence, Tuple, Union, Optional
 
@@ -16,6 +17,9 @@ def add_header(title: str) -> List[str]:
         '<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>',
         "<style>",
         "body { background: #3F3F3F; color: #DCDCCC; font-family: 'Segoe UI', 'Arial', sans-serif; }",
+        ".container { display: flex; flex-direction: row; }",
+        ".main-content { flex: 3; padding: 16px; }",
+        ".side-links { flex: 1; padding: 16px; background: #2B2B2B; color: #93E0E3; min-width: 200px; }",
         "h1, h2, h3, h4, h5, h6 { color: #F0DFAF; }",
         "table { background: #4F4F4F; color: #DCDCCC; border-collapse: collapse; }",
         "th, td { border: 1px solid #6F6F6F; padding: 4px 8px; }",
@@ -35,8 +39,10 @@ def add_footer() -> List[str]:
         ]
 
 
-def export_html(orgfile: str, lnconv=None) -> List[str]:
+def export_html(orgfile: str, lnconv=None, roam=None) -> List[str]:
     result: List[str] = add_header("Org Export")
+    result.append('<div class="container">')
+    result.append('<div class="main-content">')
     if lnconv is None:
         lnconv = link_converter
     with ParserOrg(orgfile, lnconv, HtmlFormatter()) as p:
@@ -66,5 +72,14 @@ def export_html(orgfile: str, lnconv=None) -> List[str]:
                 result.append('\[')
                 result.extend(item.lines)
                 result.append('\]')
+        result.append("</div>") # end main-content
+        result.append('<div class="side-links">')
+        result.append('<h2>Links</h2>')
+        if roam is not None:
+            for node in roam.get_links(orgfile):
+                # print(node.title)
+                result.append(f"{node.title}<br>")
+        result.append('</div>')  # end side-links
+        result.append('</div>')  # end container
     result.extend(add_footer())
     return result
