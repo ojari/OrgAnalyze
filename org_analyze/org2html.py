@@ -39,7 +39,7 @@ def add_footer() -> List[str]:
         ]
 
 
-def export_html(orgfile: str, lnconv=None, roam=None) -> List[str]:
+def export_html(orgfile: str, lnconv=None, roam=None, dest_path="") -> List[str]:
     result: List[str] = add_header("Org Export")
     result.append('<div class="container">')
     result.append('<div class="main-content">')
@@ -77,8 +77,8 @@ def export_html(orgfile: str, lnconv=None, roam=None) -> List[str]:
         result.append('<h2>Links</h2>')
         if roam is not None:
             for node in roam.get_links(orgfile):
-                # print(node.title)
-                result.append(f"{node.title}<br>")
+                url = dest_path + node.file.replace(".org", ".html")
+                result.append(p.formatter.link(url, node.title) + "<br>")
         result.append('</div>')  # end side-links
         result.append('</div>')  # end container
     result.extend(add_footer())

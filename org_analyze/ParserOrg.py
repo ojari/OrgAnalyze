@@ -113,18 +113,28 @@ class OrgProperties:
 
 
 class Formatter:
+    def link(self, url: str, name: str) -> str:
+        raise NotImplementedError
     def bold(self, text: str) -> str:
         raise NotImplementedError
     def inline_code(self, text: str) -> str:
         raise NotImplementedError
 
 class MarkdownFormatter(Formatter):
+    def link(self, url: str, name: str) -> str:
+        if name is None:
+            return f"[[{url}]]"
+        return f"[{name}]({url})"
     def bold(self, text: str) -> str:
         return f"**{text}**"
     def inline_code(self, text: str) -> str:
         return f"`{text}`"
 
 class HtmlFormatter(Formatter):
+    def link(self, url: str, name: str) -> str:
+        if name is None:
+            return f"<a href=\"{url}\">{url}</a>"
+        return f"<a href=\"{url}\">{name}</a>"
     def bold(self, text: str) -> str:
         return f"<strong>{text}</strong>"
     def inline_code(self, text: str) -> str:
@@ -184,7 +194,9 @@ class ParserOrg:
         def repl(m: re.Match) -> str:
             link = m.group(1)
             name = m.group(2) if m.group(2) is not None else link
-            return self.link_converter(link, name)
+
+            link2, name2 = self.link_converter(link, name)
+            return self.formatter.link(link2, name2)
 
         return self.org_link_re.sub(repl, line)
 
@@ -293,9 +305,9 @@ class ParserOrg:
                         break
                     lines.append(line.rstrip("\n"))
                 self.items.append(OrgSourceBlock(lines))
-            elif line.strip() == "\[":
+            elif line.strip() == "\\[":
                 lines = [line]
-                while line and not line.strip()== "\]":
+                while line and not line.strip()== "\\]":
                     line = self._f.readline()
                     if len(line) == 0:
                         break

@@ -1,5 +1,6 @@
 dist
 tmp/
 .vs/
+env/
 __pycache__/
 org_analyze.egg-info/
