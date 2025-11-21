@@ -13,6 +13,8 @@ class Formatter:
         raise NotImplementedError
     def code(self, items: List[str], language: str) -> str:
         raise NotImplementedError
+    def text_line(self, text: str) -> str:
+        raise NotImplementedError
 
 class MarkdownFormatter(Formatter):
     def link(self, url: str, name: str) -> str:
@@ -41,7 +43,9 @@ class MarkdownFormatter(Formatter):
         result.extend(items)
         result.append("```")
         return "\n".join(result)
-        
+
+    def text_line(self, text: str) -> str:
+        return text    
 
 class HtmlFormatter(Formatter):
     def link(self, url: str, name: str) -> str:
@@ -67,11 +71,14 @@ class HtmlFormatter(Formatter):
 
     def code(self, items: List[str], language: str) -> str:
         if language == "math":
-            result = ['\[']
+            result = ['\\[']
             result.extend(items)
-            result.append('\]')
+            result.append('\\]')
             return "\n".join(result)
         result = [f'<pre><code class="language-{language}">']
         result.extend(items)
         result.append("</code></pre>")
         return "\n".join(result)
+
+    def text_line(self, text: str) -> str:
+        return text + "<br>"    

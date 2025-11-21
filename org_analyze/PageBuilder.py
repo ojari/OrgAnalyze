@@ -83,3 +83,39 @@ class HtmlPageBuilder(PageBuilder):
         page.append('</div>')
         page.extend(self.footer)
         return page
+
+
+class MarkdownPageBuilder(PageBuilder):
+    def __init__(self, title: str):
+        self.title = title
+        self.main_content: List[str] = []
+        self.side_links: List[str] = []
+
+    def clear(self):
+        self.main_content = []
+        self.side_links = []
+
+    def _build_header(self) -> List[str]:
+        return [
+        ]
+
+    def _build_footer(self) -> List[str]:
+        return [
+        ]
+
+    def add_main_content(self, html: List[str]):
+        self.main_content.append(html)
+
+    def add_side_link(self, html: List[str]):
+        self.side_links.append(html)
+
+    def render(self) -> List[str]:
+        page = []
+        page.extend(self._build_header())
+        page.extend(self.main_content)
+        page.append('')
+        page.append('-------------------------------------------------------------')
+        page.append('## Links')
+        page.extend(self.side_links)
+        page.extend(self._build_footer())
+        return page

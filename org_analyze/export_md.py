@@ -1,18 +1,21 @@
-# Converts Org-roam database to HTML files.
+# Converts Org-roam database to Markdown files.
 #
 from .org2html import export_html as export
 from .RoamDb import RoamDB
+from .Formatter import MarkdownFormatter
+from .PageBuilder import PageBuilder, MarkdownPageBuilder
 import os
 from typing import List
 import argparse
 
-#EXTENSION = ".md"
-EXTENSION = ".html"
+EXTENSION = ".md"
 
 class MarkdownConverter:
     def __init__(self, roam: RoamDB, dest_path: str):
         self.roam = roam
         self.dest_path = dest_path
+        self.formatter = MarkdownFormatter()
+        self.builder = MarkdownPageBuilder("Title")
 
     def link_converter(self, link: str, name: str) -> str:
         if link.startswith("id:"):
@@ -26,8 +29,9 @@ class MarkdownConverter:
 
     def handle_file(self, org_file: str, md_file: str) -> None:
         print(f"Processing file: {org_file} -> {md_file}")
+        self.builder.clear()
         with open(md_file, "w", encoding="utf-8") as md_file_obj:
-            for line in export(org_file, self.link_converter, self.roam, self.dest_path):
+            for line in export(org_file, self.link_converter, self.roam, self.dest_path, self.formatter, self.builder):
                 if isinstance(line, list):
                     md_file_obj.write("\n".join(line))
                     md_file_obj.write("\n")
@@ -84,8 +88,8 @@ def main():
     HOME = os.environ.get("HOME", "c:/home/jari").replace("\\", "/")
 
     parser = argparse.ArgumentParser(
-        description="Convert Org-roam database to HTML files. "
-                    "This tool reads Org-roam .org files and exports them as HTML, "
+        description="Convert Org-roam database to MD files. "
+                    "This tool reads Org-roam .org files and exports them as MD, "
                     "preserving internal links and structure."
     )
     parser.add_argument(
@@ -96,7 +100,7 @@ def main():
              "Default: %(default)s"
     )
     parser.add_argument(
-        '--html_path',
+        '--md_path',
         type=str,
         default=HOME + "/OrgAnalyze/tmp/",
         help="Destination directory for output HTML files. "
@@ -115,11 +119,11 @@ def main():
     roam_db.load(args.roam_db)
 
     create_folders(roam_db.get_files())
-    converter = MarkdownConverter(roam_db, args.html_path)
+    converter = MarkdownConverter(roam_db, args.md_path)
 
     for file in roam_db.files:
-        html_filename = os.path.join("tmp", file.replace(".org", EXTENSION))
-        converter.handle_file(args.org_path + file, html_filename)
+        md_filename = os.path.join("tmp", file.replace(".org", EXTENSION))
+        converter.handle_file(args.org_path + file, md_filename)
 
 
 if __name__ == "__main__":

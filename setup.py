@@ -30,6 +30,7 @@ setup(
     entry_points={
         'console_scripts': [
             'roam-export-html=org_analyze.export_html:main', # module:function
+            'roam-export-md=org_analyze.export_md:main'
           ],
       },
     

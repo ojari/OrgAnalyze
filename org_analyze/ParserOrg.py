@@ -4,8 +4,8 @@ Very small Org-mode table/header parser.
 Improvements over the original:
 - Class is now `ParserOrg` and supports passing either a filename or a file-like object.
 - Context manager support (use `with ParserOrg(...) as p:`).
-- Safer parsing of headers, tables and variables.
-- Returns parsed items from `parse()` and stores vars on `vars`.
+- Safer parsing of headers, tables, list and variables.
+- Returns parsed items from `parse()`.
 """
 
 import logging
@@ -52,8 +52,8 @@ class OrgClock:
 
 class OrgTable:
     """Simple container for table rows. Rows are lists of cell strings."""
-    def __init__(self) -> None:
-        self.rows: List[List[str]] = []
+    def __init__(self, row: Sequence[str]) -> None:
+        self.rows: List[List[str]] = [list(row)]
 
     def add_row(self, row: Sequence[str]) -> None:
         self.rows.append(list(row))
@@ -131,6 +131,23 @@ class OrgList:
 
     def __repr__(self) -> str:
         return f"<List '{self.lines}'>"
+
+class OrgPropValue:
+    """Represents a property value (outside property block)"""
+    property_re = re.compile(r"^:([a-zA-Z0-9_\-]+):\s*(.*)")
+    def __init__(self) -> None:
+        self.values = {}
+
+    def add(self, line: str) -> None:
+        m = self.property_re.match(line)
+        if m:
+            key = m.group(1).strip().lower()
+            value = m.group(2).strip()
+            self.values[key] = value
+            # setattr(self, key, value)
+
+    def __repr__(self) -> str:
+        return f"<Properties lines={len(self.values.keys())}>"
 
 #-------------------------------------------------------------------------------------------------
 class OrgElementParser:
@@ -238,30 +255,37 @@ class OrgTableParser(OrgElementParser):
     def __init__(self, cb_parse_links):
         super().__init__(cb_parse_links)
     def can_parse(self, line):  return line.lstrip().startswith("|")
-    def parse(self, line):      return OrgTable(line)
+    def parse(self, line):      return OrgTable(self.parse_row(line))
+
     def can_cont(self, line, obj) -> Tuple[bool, bool]:
         if line.strip().startswith("|"):
             text = line.strip()
             if not text.startswith("|-") and len(text) > 1:
-                # remove leading and trailing pipe if present
-                if text.endswith("|"):
-                    core = text[1:-1]
-                else:
-                    core = text[1:]
-                cells = [self.parse_links(c.strip()) for c in core.split("|")]
-                obj.add_row(cells)
+                obj.add_row(self.parse_row(text))
+            return True, True
         else:
             return False, False
+
+    def parse_row(self, line):
+        # remove leading and trailing pipe if present
+        if line.endswith("|"):
+            core = line[1:-1]
+        else:
+            core = line[1:]
+        return [self.parse_links(c.strip()) for c in core.split("|")]
 
 class OrgPropertyLineParser(OrgElementParser):
     def __init__(self, cb_parse_links):
         super().__init__(cb_parse_links)
-    def can_parse(self, line): 
-        if not line.startswith(":"):
-            return False
-        match = re.search(r":[A-Z]+:", line)
-        return match and match.start() == 0
-    def parse(self, line):     return None  # handled directly in main parser
+        self.vars = {}
+
+    def can_parse(self, line):  return line.startswith("#+")
+    def parse(self, line):
+        tail = line[2:]
+        if ":" in tail:
+            name, value = tail.split(":", 1)
+            self.vars[name.strip().lower()] = value.strip()
+        return None
 
 #-------------------------------------------------------------------------------------------------
 class ParserOrg:
@@ -293,7 +317,6 @@ class ParserOrg:
             self._own_file = False
 
         self.items: List[object] = []
-        self.vars: dict = {}
         self.link_converter = link_converter
         self.formatter = formatter or MarkdownFormatter()
 
@@ -332,8 +355,6 @@ class ParserOrg:
         """
         # Reset state
         self.items = []
-        self.vars = {}
-        self._last_line = None
         self.parsers = [
             OrgHeaderParser(self.parse_links),
             OrgClockParser(self.parse_links),
@@ -349,7 +370,7 @@ class ParserOrg:
         active_parser = None
         while True:
             line = self._f.readline()
-            if line is None:
+            if line is None or len(line)==0:
                 break
             line = line.rstrip("\n")
 
@@ -370,17 +391,5 @@ class ParserOrg:
                     if data is not None:
                         self.items.append(data)
                     break
-            continue
-
-            if line.startswith("#+"):
-                # file variable - split at first ':' for safety
-                tail = line[2:]
-                if ":" in tail:
-                    name, value = tail.split(":", 1)
-                    self.vars[name.strip().lower()] = value.strip()
-                else:
-                    logging.debug("Unrecognized variable line: %r", line)
-
-
         self.close()
         return self.items

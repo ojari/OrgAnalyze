@@ -10,11 +10,11 @@ def link_converter(link: str, name: str) -> str:
     return f"<a href=\"{link}\">{name}</a>"
 
 
-def export_html(orgfile: str, lnconv=None, roam=None, dest_path="") -> List[str]:
-    builder : PageBuilder = HtmlPageBuilder("Org Export")
+def export_html(orgfile: str, lnconv=None, roam=None, dest_path="", formatter=None, builder=None) -> List[str]:
+    builder : PageBuilder = builder or HtmlPageBuilder("Org Export")
     if lnconv is None:
         lnconv = link_converter
-    formatter = HtmlFormatter()
+    formatter = formatter or HtmlFormatter()
     with ParserOrg(orgfile, lnconv, formatter) as p:
         result : List[str] = []
         for item in p.parse():
@@ -36,7 +36,7 @@ def export_html(orgfile: str, lnconv=None, roam=None, dest_path="") -> List[str]
             elif isinstance(item, OrgSourceBlock):
                 result.append(formatter.code(item.lines, item.language))
             elif isinstance(item, OrgText):
-                result.append(item.line + "<br>")
+                result.append(formatter.text_line(item.line))
             elif isinstance(item, OrgMath):
                 result.append(formatter.code(item.lines, 'math'))
             elif isinstance(item, OrgList):
@@ -47,7 +47,7 @@ def export_html(orgfile: str, lnconv=None, roam=None, dest_path="") -> List[str]
         if roam is not None:
             for node in roam.get_links(orgfile):
                 url = dest_path + node.file.replace(".org", ".html")
-                links.append(p.formatter.link(url, node.title) + "<br>")
+                links.append(formatter.text_line(formatter.link(url, node.title)))
         builder.side_links.extend(links)
 
     return builder.render()
