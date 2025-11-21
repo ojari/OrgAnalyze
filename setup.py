@@ -25,5 +25,12 @@ setup(
     classifiers=[
         "Programming Language :: Python :: 3",
         "Intended Audience :: Developers",
-    ]
+    ],
+    #scripts=["export_html.py"],  # Add your script(s) here
+    entry_points={
+        'console_scripts': [
+            'roam-export-html=org_analyze.export_html:main', # module:function
+          ],
+      },
+    
 )

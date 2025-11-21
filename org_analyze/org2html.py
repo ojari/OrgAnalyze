@@ -1,5 +1,7 @@
 from re import I
-from .ParserOrg import ParserOrg, HtmlFormatter, OrgHeader, OrgClock, OrgTable, OrgSourceBlock, OrgText, OrgMath, OrgProperties
+from .ParserOrg import ParserOrg, OrgHeader, OrgClock, OrgTable, OrgSourceBlock, OrgText, OrgMath, OrgProperties, OrgList
+from .Formatter import HtmlFormatter
+from .PageBuilder import PageBuilder, HtmlPageBuilder
 from typing import List, Sequence, Tuple, Union, Optional
 
 def link_converter(link: str, name: str) -> str:
@@ -7,48 +9,17 @@ def link_converter(link: str, name: str) -> str:
         return f"<a href=\"{name}.html\">{name}</a>"
     return f"<a href=\"{link}\">{name}</a>"
 
-def add_header(title: str) -> List[str]:
-    return [
-        "<!DOCTYPE html>",
-        "<html>",
-        "<head>",
-        f"<meta charset=\"utf-8\">",
-        f"<title>{title}</title>",
-        '<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>',
-        "<style>",
-        "body { background: #3F3F3F; color: #DCDCCC; font-family: 'Segoe UI', 'Arial', sans-serif; }",
-        ".container { display: flex; flex-direction: row; }",
-        ".main-content { flex: 3; padding: 16px; }",
-        ".side-links { flex: 1; padding: 16px; background: #2B2B2B; color: #93E0E3; min-width: 200px; }",
-        "h1, h2, h3, h4, h5, h6 { color: #F0DFAF; }",
-        "table { background: #4F4F4F; color: #DCDCCC; border-collapse: collapse; }",
-        "th, td { border: 1px solid #6F6F6F; padding: 4px 8px; }",
-        "th { background: #5F5F5F; color: #F0DFAF; }",
-        "pre, code { background: #2B2B2B; color: #CC9393; font-family: 'Fira Mono', 'Consolas', 'Monaco', monospace; }",
-        ".math { background: #2B2B2B; color: #DFAF8F; padding: 8px; display: block; }",
-        "a { color: #93E0E3; }",
-        "</style>",
-        "</head>",
-        "<body>"
-    ]
-
-def add_footer() -> List[str]:
-    return [
-        "</body>",
-        "</html>"
-        ]
-
 
 def export_html(orgfile: str, lnconv=None, roam=None, dest_path="") -> List[str]:
-    result: List[str] = add_header("Org Export")
-    result.append('<div class="container">')
-    result.append('<div class="main-content">')
+    builder : PageBuilder = HtmlPageBuilder("Org Export")
     if lnconv is None:
         lnconv = link_converter
-    with ParserOrg(orgfile, lnconv, HtmlFormatter()) as p:
+    formatter = HtmlFormatter()
+    with ParserOrg(orgfile, lnconv, formatter) as p:
+        result : List[str] = []
         for item in p.parse():
             if isinstance(item, OrgHeader):
-                result.append(f"<h{item.level}>{item.name}</h{item.level}>")
+                result.append(formatter.header(item.name, item.level))
             elif isinstance(item, OrgProperties):
                 print(item.values)
             elif isinstance(item, OrgClock):
@@ -63,23 +34,20 @@ def export_html(orgfile: str, lnconv=None, roam=None, dest_path="") -> List[str]
                         result.append("<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>")
                 result.append("</table>")
             elif isinstance(item, OrgSourceBlock):
-                result.append(f'<pre><code class="language-{item.language}">')
-                result.extend(item.lines)
-                result.append("</code></pre>")
+                result.append(formatter.code(item.lines, item.language))
             elif isinstance(item, OrgText):
-                result.append(item.line  + "<br>")
+                result.append(item.line + "<br>")
             elif isinstance(item, OrgMath):
-                result.append('\[')
-                result.extend(item.lines)
-                result.append('\]')
-        result.append("</div>") # end main-content
-        result.append('<div class="side-links">')
-        result.append('<h2>Links</h2>')
+                result.append(formatter.code(item.lines, 'math'))
+            elif isinstance(item, OrgList):
+                result.append(formatter.list(item.lines))
+        builder.add_main_content(result)
+
+        links = []
         if roam is not None:
             for node in roam.get_links(orgfile):
                 url = dest_path + node.file.replace(".org", ".html")
-                result.append(p.formatter.link(url, node.title) + "<br>")
-        result.append('</div>')  # end side-links
-        result.append('</div>')  # end container
-    result.extend(add_footer())
-    return result
+                links.append(p.formatter.link(url, node.title) + "<br>")
+        builder.side_links.extend(links)
+
+    return builder.render()

@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>d39e2052-7fa4-4ca0-8d57-e6bf07d3bac1</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>demo2.py</StartupFile>
+    <StartupFile>runner.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -22,13 +22,17 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="demo2.py" />
+    <Compile Include="org_analyze\export_html.py" />
     <Compile Include="org_analyze/ParserOrg.py" />
     <Compile Include="org_analyze/org2md.py" />
     <Compile Include="org_analyze/clocks.py" />
+    <Compile Include="org_analyze\Formatter.py" />
     <Compile Include="org_analyze\org2html.py" />
+    <Compile Include="org_analyze\PageBuilder.py" />
     <Compile Include="org_analyze\RoamDb.py" />
     <Compile Include="org_analyze\__init__.py" />
+    <Compile Include="runner.py" />
+    <Compile Include="setup.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="org_analyze\" />

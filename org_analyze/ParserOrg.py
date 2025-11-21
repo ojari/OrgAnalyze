@@ -10,8 +10,10 @@ Improvements over the original:
 
 import logging
 import re
+from sqlite3 import DateFromTicks
 from typing import IO, List, Sequence, Tuple, Union, Optional
 import os
+from .Formatter import MarkdownFormatter
 
 
 class OrgHeader:
@@ -72,9 +74,12 @@ class OrgTable:
 
 class OrgSourceBlock:
     """Represents a source code block."""
-    def __init__(self, lines: List[str]) -> None:
-        self.lines = lines[1:-1]  # exclude the begin/end lines
-        self.language = lines[0].strip(" ").split()[1] if lines else "unknown"
+    def __init__(self, line: str) -> None:
+        self.lines = []
+        self.language = line.strip(" ").split()[1] if line else "unknown"
+
+    def add(self, line: str) -> None:
+        self.lines.append(line)
 
     def __repr__(self) -> str:
         return f"<SourceBlock lang={self.language} lines={len(self.lines)}>"
@@ -89,8 +94,11 @@ class OrgText:
 
 class OrgMath:
     """Represents a math block."""
-    def __init__(self, lines: List[str]) -> None:
-        self.lines = lines[1:-1]  # exclude the begin/end lines
+    def __init__(self) -> None:
+        self.lines = []
+
+    def add(self, line: str) -> None:
+        self.lines.append(line)
 
     def __repr__(self) -> str:
         return f"<Math lines={len(self.lines)}>"
@@ -98,48 +106,164 @@ class OrgMath:
 class OrgProperties:
     """Represents a PROPERTIES block."""
     property_re = re.compile(r"^:([a-zA-Z0-9_\-]+):\s*(.*)")
-    def __init__(self, lines: List[str]) -> None:
+    def __init__(self) -> None:
         self.values = {}
-        for line in lines[:-1]:
-            m = self.property_re.match(line)
-            if m:
-                key = m.group(1).strip().lower()
-                value = m.group(2).strip()
-                self.values[key] = value
-                # setattr(self, key, value)
+
+    def add(self, line: str) -> None:
+        m = self.property_re.match(line)
+        if m:
+            key = m.group(1).strip().lower()
+            value = m.group(2).strip()
+            self.values[key] = value
+            # setattr(self, key, value)
 
     def __repr__(self) -> str:
-        return f"<Properties lines={len(self.lines)}>"
+        return f"<Properties lines={len(self.values.keys())}>"
 
+class OrgList:
+    """Represents a list item."""
+    def __init__(self, line: str) -> None:
+        self.lines = [line]
+        self.ordered = False
 
-class Formatter:
-    def link(self, url: str, name: str) -> str:
+    def add(self, line: str) -> None:
+        self.lines.append(line)
+
+    def __repr__(self) -> str:
+        return f"<List '{self.lines}'>"
+
+#-------------------------------------------------------------------------------------------------
+class OrgElementParser:
+    def __init__(self, cb_parse_links) -> None:
+        self.parse_links = cb_parse_links
+    def can_parse(self, line: str) -> bool:
         raise NotImplementedError
-    def bold(self, text: str) -> str:
+    def can_cont(self, line: str, obj) -> Tuple[bool, bool]:  # continue, line consumed
+        return False, True
+    def parse(self, line: str, file) -> object:
         raise NotImplementedError
-    def inline_code(self, text: str) -> str:
-        raise NotImplementedError
 
-class MarkdownFormatter(Formatter):
-    def link(self, url: str, name: str) -> str:
-        if name is None:
-            return f"[[{url}]]"
-        return f"[{name}]({url})"
-    def bold(self, text: str) -> str:
-        return f"**{text}**"
-    def inline_code(self, text: str) -> str:
-        return f"`{text}`"
+class OrgHeaderParser(OrgElementParser):
+    def __init__(self, cb_parse_links):
+        super().__init__(cb_parse_links)
+    def can_parse(self, line): return line.startswith("*")
+    def parse(self, line):     return OrgHeader(self.parse_links(line))
 
-class HtmlFormatter(Formatter):
-    def link(self, url: str, name: str) -> str:
-        if name is None:
-            return f"<a href=\"{url}\">{url}</a>"
-        return f"<a href=\"{url}\">{name}</a>"
-    def bold(self, text: str) -> str:
-        return f"<strong>{text}</strong>"
-    def inline_code(self, text: str) -> str:
-        return f"<code>{text}</code>"
+class OrgHeaderParser(OrgElementParser):
+    def __init__(self, cb_parse_links):
+        super().__init__(cb_parse_links)
+    def can_parse(self, line): return line.startswith("*")
+    def parse(self, line):     return OrgHeader(self.parse_links(line))
 
+class OrgClockParser(OrgElementParser):
+    def __init__(self, cb_parse_links):
+        super().__init__(cb_parse_links)
+    def can_parse(self, line): return line.startswith("CLOCK:") or line.startswith("#+CLK:")
+    def parse(self, line):     return OrgClock(line)
+
+class OrgCodeParser(OrgElementParser):
+    def __init__(self, cb_parse_links):
+        super().__init__(cb_parse_links)
+    def can_parse(self, line): return line.lower().startswith("#+begin_src")
+    def parse(self, line):     return OrgSourceBlock(line)
+    def can_cont(self, line, obj):
+        if line.lower().startswith("#+end_src"):
+            return False,True
+        else:
+            obj.add(line)
+            return True,True
+
+class OrgMathParser(OrgElementParser):
+    def __init__(self, cb_parse_links):
+        super().__init__(cb_parse_links)
+    def can_parse(self, line): return line.strip() == "\\["
+    def parse(self, _):        return OrgMath()
+    def can_cont(self, line, obj):
+        if line.strip() == "\\]":
+            return False,True
+        else:
+            obj.add(line)
+            return True,True
+
+class OrgPropertiesParser(OrgElementParser):
+    def __init__(self, cb_parse_links):
+        super().__init__(cb_parse_links)
+    def can_parse(self, line): return line.strip() == ":PROPERTIES:"
+    def parse(self, _):        return OrgProperties()
+    def can_cont(self, line, obj):
+        if line.strip() == ":END:":
+            return False,True
+        else:
+            obj.add(line)
+            return True,True
+
+class OrgListParser(OrgElementParser):
+    def __init__(self, cb_parse_links):
+        super().__init__(cb_parse_links)
+    def can_parse(self, line): return line.startswith("- ")
+    def parse(self, line):        return OrgList(self.parse_links(line[2:]))
+    def can_cont(self, line, obj):
+        if line.startswith("- "):
+            obj.add(self.parse_links(line[2:]))
+            return True,True
+        else:
+            return False,False
+
+class OrgTextParser(OrgElementParser):
+    def __init__(self, cb_parse_links, formatter):
+        super().__init__(cb_parse_links)
+        self.formatter = formatter
+    def can_parse(self, line): return True
+    def parse(self, line):     return OrgText(self.parse_line(self.parse_links(line)))
+    def can_cont(self, line: str, obj) -> Tuple[bool, bool]:  # continue, line consumed
+        return False, False
+
+    def replace_inline_code(self, line: str) -> str:
+        # Replace ~...~ with `...`
+        def repl(m):
+            return self.formatter.inline_code(m.group(1))
+        return re.sub(r'~([^~]+)~', repl, line)
+
+    def replace_bold(self, line: str) -> str:
+        # Replace *bold* with **bold**, but not at the start of the line (to avoid headers)
+        def repl(m):
+            return self.formatter.bold(m.group(1))
+        return re.sub(r'(?<!^)\*(\S(.*?\S)?)\*(?!\*)', repl, line)
+
+    def parse_line(self, line: str) -> str:
+        """Parse a single line and return the processed line."""
+        return self.replace_bold(self.replace_inline_code(line))
+
+class OrgTableParser(OrgElementParser):
+    def __init__(self, cb_parse_links):
+        super().__init__(cb_parse_links)
+    def can_parse(self, line):  return line.lstrip().startswith("|")
+    def parse(self, line):      return OrgTable(line)
+    def can_cont(self, line, obj) -> Tuple[bool, bool]:
+        if line.strip().startswith("|"):
+            text = line.strip()
+            if not text.startswith("|-") and len(text) > 1:
+                # remove leading and trailing pipe if present
+                if text.endswith("|"):
+                    core = text[1:-1]
+                else:
+                    core = text[1:]
+                cells = [self.parse_links(c.strip()) for c in core.split("|")]
+                obj.add_row(cells)
+        else:
+            return False, False
+
+class OrgPropertyLineParser(OrgElementParser):
+    def __init__(self, cb_parse_links):
+        super().__init__(cb_parse_links)
+    def can_parse(self, line): 
+        if not line.startswith(":"):
+            return False
+        match = re.search(r":[A-Z]+:", line)
+        return match and match.start() == 0
+    def parse(self, line):     return None  # handled directly in main parser
+
+#-------------------------------------------------------------------------------------------------
 class ParserOrg:
     """Parser for a tiny subset of Emacs org-mode used by this project.
 
@@ -200,65 +324,6 @@ class ParserOrg:
 
         return self.org_link_re.sub(repl, line)
 
-    def parse_table(self, line: str) -> OrgTable:
-        """Parse consecutive table lines starting from `line` (which should
-        start with '|'). Returns an OrgTable object. The file pointer will be
-        left at the first non-table line.
-        """
-        tbl = OrgTable()
-        # line may have trailing newline
-        while line is not None and line.lstrip().startswith("|"):
-            text = line.strip()
-            if not text.startswith("|-") and len(text) > 1:
-                # remove leading and trailing pipe if present
-                if text.endswith("|"):
-                    core = text[1:-1]
-                else:
-                    core = text[1:]
-                cells = [c.strip() for c in core.split("|")]
-                tbl.add_row(cells)
-            # read next line
-            line = self._f.readline()
-
-            if line == "":
-                # EOF - break and return
-                break
-
-        # If we stopped on a non-empty non-table line, move the file cursor
-        # back so the outer loop can process it. We can approximate by using
-        # tell/seek only for real files; for other file-likes we keep the
-        # leftover line in a small attribute.
-        if line and not line.lstrip().startswith("|"):
-            # store leftover line for next parse step
-            self._last_line = line
-        else:
-            self._last_line = None
-
-        return tbl
-
-    def _is_property_line(self, line: str) -> bool:
-        """Check if the line is a property line (starts with ':PROPERTY:')."""
-        if not line.startswith(":"):
-            return False
-        match = re.search(r":[A-Z]+:", line)
-        return match and match.start() == 0
-
-    def replace_inline_code(self, line: str) -> str:
-        # Replace ~...~ with `...`
-        def repl(m):
-            return self.formatter.inline_code(m.group(1))
-        return re.sub(r'~([^~]+)~', repl, line)
-
-    def replace_bold(self, line: str) -> str:
-        # Replace *bold* with **bold**, but not at the start of the line (to avoid headers)
-        def repl(m):
-            return self.formatter.bold(m.group(1))
-        return re.sub(r'(?<!^)\*(\S(.*?\S)?)\*(?!\*)', repl, line)
-
-    def parse_line(self, line: str) -> str:
-        """Parse a single line and return the processed line."""
-        return self.replace_bold(self.replace_inline_code(line))
-
     def parse(self) -> List[object]:
         """Parse the opened file and return a list of top-level items.
 
@@ -269,59 +334,45 @@ class ParserOrg:
         self.items = []
         self.vars = {}
         self._last_line = None
+        self.parsers = [
+            OrgHeaderParser(self.parse_links),
+            OrgClockParser(self.parse_links),
+            OrgCodeParser(self.parse_links),
+            OrgMathParser(self.parse_links),
+            OrgPropertiesParser(self.parse_links),
+            OrgListParser(self.parse_links),
+            OrgTableParser(self.parse_links),
+            OrgPropertyLineParser(self.parse_links),
+            OrgTextParser(self.parse_links, self.formatter)  # this must be last
+        ]   
 
+        active_parser = None
         while True:
-            if self._last_line is not None:
-                raw = self._last_line
-                self._last_line = None
-            else:
-                raw = self._f.readline()
-
-            if raw == "":
+            line = self._f.readline()
+            if line is None:
                 break
+            line = line.rstrip("\n")
 
-            # keep the original for pattern checks
-            line = raw.rstrip("\n")
-            if line.strip() == "":
-                # empty line
-                continue
+            if active_parser is not None:
+                cont, consumed = active_parser.can_cont(line, self.items[-1])
+                if not cont:
+                    active_parser = None
+                    if consumed:
+                        line = self._f.readline().rstrip("\n")
+                else:
+                    continue  # do not change parser
 
-            if line.lstrip().startswith("|"):
-                # table
-                table = self.parse_table(line)
-                self.items.append(table)
+            for parser in self.parsers:
+                if parser.can_parse(line):
+                    active_parser = parser
 
-            elif line.startswith("*"):  # header
-                self.items.append(OrgHeader(line))
+                    data = parser.parse(line)
+                    if data is not None:
+                        self.items.append(data)
+                    break
+            continue
 
-            elif line.startswith("CLOCK:") or line.startswith("#+CLK:"):
-                self.items.append(OrgClock(line))
-
-            elif line.lower().startswith("#+begin_src"):
-                lines = [line]
-                while line and not line.lower().startswith("#+end_src"):
-                    line = self._f.readline()
-                    if len(line) == 0:
-                        break
-                    lines.append(line.rstrip("\n"))
-                self.items.append(OrgSourceBlock(lines))
-            elif line.strip() == "\\[":
-                lines = [line]
-                while line and not line.strip()== "\\]":
-                    line = self._f.readline()
-                    if len(line) == 0:
-                        break
-                    lines.append(line.rstrip("\n"))
-                self.items.append(OrgMath(lines))
-            elif line.strip() == ":PROPERTIES:":
-                properties = []
-                while line and not line.strip() == ":END:":
-                    line = self._f.readline()
-                    properties.append(line.strip())
-                self.items.append(OrgProperties(properties))
-            elif self._is_property_line(line):
-                pass # skip property lines
-            elif line.startswith("#+"):
+            if line.startswith("#+"):
                 # file variable - split at first ':' for safety
                 tail = line[2:]
                 if ":" in tail:
@@ -330,8 +381,6 @@ class ParserOrg:
                 else:
                     logging.debug("Unrecognized variable line: %r", line)
 
-            else:
-                self.items.append(OrgText(self.parse_line(self.parse_links(line))))
 
         self.close()
         return self.items

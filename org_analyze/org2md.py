@@ -1,4 +1,5 @@
-from .ParserOrg import ParserOrg, OrgHeader, OrgClock, OrgTable, OrgSourceBlock, OrgText, OrgMath, OrgProperties
+from .ParserOrg import ParserOrg, OrgHeader, OrgClock, OrgTable, OrgSourceBlock, OrgText, OrgMath, OrgProperties, OrgList
+from .Formatter import MarkdownFormatter
 from typing import List, Sequence, Tuple, Union, Optional
 
 def link_converter(link: str, name: str) -> str:
@@ -10,10 +11,11 @@ def export_markdown(orgfile: str, lnconv=None) -> List[str]:
     result: List[str] = []
     if lnconv is None:
         lnconv = link_converter
-    with ParserOrg(orgfile, lnconv) as p:
+    formatter = MarkdownFormatter()
+    with ParserOrg(orgfile, lnconv, formatter) as p:
         for item in p.parse():
             if isinstance(item, OrgHeader):
-                result.append("#" * item.level + " " + item.name)
+                result.append(formatter(item.name, item.level))
             elif isinstance(item, OrgProperties):
                 print(item.values)
             elif isinstance(item, OrgClock):
@@ -23,15 +25,12 @@ def export_markdown(orgfile: str, lnconv=None) -> List[str]:
                     result.append("| " + " | ".join(row) + " |")
                 result.append("")  # add an empty line after the table
             elif isinstance(item, OrgSourceBlock):
-                result.append("```" + (item.language or ""))
-                result.extend(item.lines)
-                result.append("```")
-                # result.append("")  # add an empty line after the code block
+                result.append(formatter.code(item.lines, item.language))
             elif isinstance(item, OrgText):
                 result.append(item.line)
             elif isinstance(item, OrgMath):
-                result.append("```math")
-                result.extend(item.lines)
-                result.append("```")
+                result.append(formatter.code(item.lines, 'math'))
+            elif isinstance(item, OrgList):
+                result.append(formatter.list(item.lines, item.ordered))
 
     return result
