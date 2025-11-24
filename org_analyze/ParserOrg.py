@@ -156,15 +156,9 @@ class OrgElementParser:
     def can_parse(self, line: str) -> bool:
         raise NotImplementedError
     def can_cont(self, line: str, obj) -> Tuple[bool, bool]:  # continue, line consumed
-        return False, True
+        return False, False
     def parse(self, line: str, file) -> object:
         raise NotImplementedError
-
-class OrgHeaderParser(OrgElementParser):
-    def __init__(self, cb_parse_links):
-        super().__init__(cb_parse_links)
-    def can_parse(self, line): return line.startswith("*")
-    def parse(self, line):     return OrgHeader(self.parse_links(line))
 
 class OrgHeaderParser(OrgElementParser):
     def __init__(self, cb_parse_links):
