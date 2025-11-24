@@ -2,18 +2,27 @@
 
 Collect data from org-mode/org-roam pages and do some simple analyzing it
 
+What you can do with this package:
+ - Collect org-mode clock entries from multiple files
+ - Collect org-mode estimated time entries from multiple files
+ - Convert org-mode file to python objects for further processing
+ - Read org-roam database into pandas DataFrame (WIP)
+ - Export org-roam notes into markdown files (WIP) -- target is to use Obsidian for viewing
+ - Export org-roam notes into HTML pages (WIP)
+
 ### Items Parsed by `ParserOrg`
 
 The parser processes the following org-mode elements, turning them into specific Python objects:
 
--   **Headers**: Lines starting with `*`, `**`, etc. are parsed as `OrgHeader` objects.
--   **Clock Entries**: Lines starting with `CLOCK:` or `#+CLK:` are parsed as `OrgClock` objects.
--   **Tables**: Blocks of lines starting with `|` are parsed into `OrgTable` objects.
--   **Source Blocks**: Code blocks delimited by `#+BEGIN_SRC` and `#+END_SRC` are parsed as `OrgSourceBlock`.
--   **Math Blocks**: LaTeX math blocks delimited by `\[` and `\]` are parsed as `OrgMath`.
--   **Property Drawers**: Blocks delimited by `:PROPERTIES:` and `:END:` are parsed as `OrgProperties`.
--   **File Variables**: Lines like `#+TITLE: My Document` are parsed and stored in the parser's `vars` dictionary.
--   **Text and Links**: All other lines are treated as plain text (`OrgText`), with org-mode links like `[[...]]` being processed.
+- **Headers**: Lines starting with `*`, `**`, etc. are parsed as `OrgHeader` objects.
+- **Clock Entries**: Lines starting with `CLOCK:` or `#+CLK:` are parsed as `OrgClock` objects.
+- **Tables**: Blocks of lines starting with `|` are parsed into `OrgTable` objects.
+- **Source Blocks**: Code blocks delimited by `#+BEGIN_SRC` and `#+END_SRC` are parsed as `OrgSourceBlock`.
+- **Math Blocks**: LaTeX math blocks delimited by `\[` and `\]` are parsed as `OrgMath`.
+- **Property Drawers**: Blocks delimited by `:PROPERTIES:` and `:END:` are parsed as `OrgProperties`.
+- **File Variables**: Lines like `#+TITLE: My Document` are parsed and stored in the parser's `vars` dictionary.
+- **Lists**: Lines starting with `-`, `+`, or numbered lists are parsed as `OrgList` objects.
+- **Text and Links**: All other lines are treated as plain text (`OrgText`), with org-mode links like `[[...]]` being processed.
 
 ## export_markdown from org2md
 
@@ -89,3 +98,21 @@ Feature A    2.5
 Feature B    0.5
 Name: duration, dtype: float64
 ```
+
+## RoamDb
+
+This module provides functionality to read and analyze an org-roam database using pandas DataFrames.    
+
+### Example Usage
+
+```python
+from org_analyze.RoamDb import RoamDB
+
+HOME = "c:/home/jari/"
+d = RoamDB(HOME+"org-roam/")
+d.load(HOME+".emacs.d/org-roam.db")
+
+df = d.getNodesDf()
+print(df.groupby('category').size().sort_values(ascending=False))
+```
+

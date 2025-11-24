@@ -7,4 +7,4 @@ from .Formatter import *
 from .export_html import *
 from .PageBuilder import *
 
-__version__ = "0.1.9"
+__version__ = "0.1.10"

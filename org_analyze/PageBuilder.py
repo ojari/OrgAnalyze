@@ -1,36 +1,23 @@
-from typing import List, Sequence, Tuple, Union, Optional
+from types import NotImplementedType
+from typing import List, Dict, Sequence, Tuple, Union, Optional
 
 class PageBuilder:
     def add_main_content(self, html: List[str]):
         raise NotImplementedError
     def add_side_link(self, html: List[str]):
         raise NotImplementedError
-    def render(self) -> List[str]:
+    def render(self, formatter) -> List[str]:
         raise NotImplementedError
-
-class MarkdownPageBuilder(PageBuilder):
-    def __init__(self):
-        self.main_content: List[str] = []
-        self.side_links: List[str] = []
-    def add_main_content(self, html: List[str]):
-        self.main_content.append(html)
-    def add_side_link(self, html: List[str]):
-        self.side_links.append(html)
-    def render(self) -> List[str]:
-        page = []
-        page.extend(self.main_content)
-        page.append("\n## Links\n")
-        page.extend(self.side_links)
-        return page
+    def add_tags(self, name: str, tags: List[Tuple[str,str]]):
+        raise NotImplementedType
 
 
 class HtmlPageBuilder(PageBuilder):
     def __init__(self, title: str):
         self.title = title
-        self.header = self._build_header()
-        self.footer = self._build_footer()
         self.main_content: List[str] = []
         self.side_links: List[str] = []
+        self.tags: Dict[str, List[Tuple[str,str]]] = {}
 
     def _build_header(self) -> List[str]:
         return [
@@ -71,17 +58,25 @@ class HtmlPageBuilder(PageBuilder):
     def add_side_link(self, html: List[str]):
         self.side_links.append(html)
 
-    def render(self) -> List[str]:
+    def add_tags(self, name: str, tags: List[Tuple[str,str]]):
+        self.tags[name] = tags
+
+    def render(self, formatter) -> List[str]:
         page = []
-        page.extend(self.header)
+        page.extend(self._build_header())
         page.append('<div class="main-content">')
         page.extend(self.main_content)
         page.append('</div>')
         page.append('<div class="side-links">')
-        page.append('<h2>Links</h2>')
+        page.append(formatter.header("Links", 2))
         page.extend(self.side_links)
+        for name,tags in self.tags.items():
+            page.append(formatter.header(name, 2))
+            for url,lname in tags:
+                page.append(formatter.link(url, lname))
+            page.append("<br>")
         page.append('</div>')
-        page.extend(self.footer)
+        page.extend(self._build_footer())
         return page
 
 
@@ -90,18 +85,11 @@ class MarkdownPageBuilder(PageBuilder):
         self.title = title
         self.main_content: List[str] = []
         self.side_links: List[str] = []
+        self.tags: Dict[str, List[Tuple[str,str]]] = {}
 
     def clear(self):
         self.main_content = []
         self.side_links = []
-
-    def _build_header(self) -> List[str]:
-        return [
-        ]
-
-    def _build_footer(self) -> List[str]:
-        return [
-        ]
 
     def add_main_content(self, html: List[str]):
         self.main_content.append(html)
@@ -109,13 +97,14 @@ class MarkdownPageBuilder(PageBuilder):
     def add_side_link(self, html: List[str]):
         self.side_links.append(html)
 
-    def render(self) -> List[str]:
+    def add_tags(self, name: str, tags: List[Tuple[str,str]]):
+        self.tags[name] = tags
+
+    def render(self, formatter) -> List[str]:
         page = []
-        page.extend(self._build_header())
         page.extend(self.main_content)
         page.append('')
         page.append('-------------------------------------------------------------')
         page.append('## Links')
         page.extend(self.side_links)
-        page.extend(self._build_footer())
         return page

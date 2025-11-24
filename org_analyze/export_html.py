@@ -80,6 +80,12 @@ def run_one(org_file, md_file):
     converter = MarkdownConverter(roam_db, args.html_path)
     converter.handle_file(org_file, md_file)
 
+def convert_path(path: str) -> str:
+    path = path.replace("\\", "/")
+    if not path.endswith("/"):
+        path += "/"
+    return path
+
 def main():
     HOME = os.environ.get("HOME", "c:/home/jari").replace("\\", "/")
 
@@ -110,16 +116,17 @@ def main():
              "Used to resolve links and metadata. Default: %(default)s"
     )
     args = parser.parse_args()
+    org_path = convert_path(args.org_path)
 
-    roam_db = RoamDB(args.org_path)
+    roam_db = RoamDB(org_path)
     roam_db.load(args.roam_db)
 
     create_folders(roam_db.get_files())
-    converter = MarkdownConverter(roam_db, args.html_path)
+    converter = MarkdownConverter(roam_db, convert_path(args.html_path))
 
     for file in roam_db.files:
         html_filename = os.path.join("tmp", file.replace(".org", EXTENSION))
-        converter.handle_file(args.org_path + file, html_filename)
+        converter.handle_file(org_path + file, html_filename)
 
 
 if __name__ == "__main__":

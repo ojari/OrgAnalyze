@@ -15,6 +15,12 @@ class Formatter:
         raise NotImplementedError
     def text_line(self, text: str) -> str:
         raise NotImplementedError
+    def start_table(self) -> str:
+        raise NotImplementedError
+    def table_row(self, row: List[str], header: bool = False):
+        raise NotImplementedError
+    def end_table(self) -> str:
+        raise NotImplementedError
 
 class MarkdownFormatter(Formatter):
     def link(self, url: str, name: str) -> str:
@@ -45,7 +51,16 @@ class MarkdownFormatter(Formatter):
         return "\n".join(result)
 
     def text_line(self, text: str) -> str:
-        return text    
+        return text
+
+    def start_table(self) -> str:
+        return None
+
+    def table_row(self, row: List[str], header: bool = False):
+        return "| " + (" | ".join(row)) + " |"
+
+    def end_table(self) -> str:
+        return None
 
 class HtmlFormatter(Formatter):
     def link(self, url: str, name: str) -> str:
@@ -82,3 +97,13 @@ class HtmlFormatter(Formatter):
 
     def text_line(self, text: str) -> str:
         return text + "<br>"    
+
+    def start_table(self) -> str:
+        return "<table>"
+
+    def table_row(self, row: List[str], header: bool = False):
+        tag = "th" if header else "td"
+        return "<tr>" + ("".join(f"<{tag}>{cell}</{tag}>" for cell in row)) + "</tr>"
+
+    def end_table(self) -> str:
+        return "</table>"
