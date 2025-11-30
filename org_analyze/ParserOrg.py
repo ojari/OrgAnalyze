@@ -76,7 +76,7 @@ class OrgSourceBlock:
     """Represents a source code block."""
     def __init__(self, line: str) -> None:
         self.lines = []
-        self.language = line.strip(" ").split()[1] if line else "unknown"
+        self.language = line.strip(" ").split()[1] if (line and (" " in line)) else "text"
 
     def add(self, line: str) -> None:
         self.lines.append(line)
