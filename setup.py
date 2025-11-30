@@ -10,6 +10,15 @@ def read_version():
                 return line.split(delim)[1]
     raise RuntimeError("Unable to find version string.")
 
+def read_requirements():
+    res = []
+    req_file = os.path.join(os.path.dirname(__file__), "requirements.txt")
+    with open(req_file, "r") as f:
+        for line in f.readlines():
+            res.append(line.strip())
+    return res
+
+
 version = read_version()
 setup(
     name="org_analyze",
@@ -19,12 +28,15 @@ setup(
     long_description_content_type="text/markdown",
     author="Jari Ojanen",
     packages=find_packages(),
-    install_requires=[],
+    install_requires=['pandas'], # read_requirements(),
     python_requires=">=3.9",
     url="https://github.com/ojari/OrgAnalyze",
     classifiers=[
         "Programming Language :: Python :: 3",
         "Intended Audience :: Developers",
+        "Topic :: Text Processing :: Markup",
+        "Topic :: Utilities",
+        "Topic :: Text Editors :: Emacs"
     ],
     #scripts=["export_html.py"],  # Add your script(s) here
     entry_points={
