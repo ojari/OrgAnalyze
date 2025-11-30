@@ -21,7 +21,21 @@ a { color: #93E0E3; }
 <body>
 <div class="container">
 <div class="main-content">
-
+<h1>roam-export-md</h1>
+<br>
+Convert Org-roam database to MarkDown files. This tool reads Org-roam .org files and exports them as MD, preserving internal<br>
+links and structure.<br>
+<br>
+<pre><code class="language-python">
+usage: roam-export-md [-h] [--org_path ORG_PATH] [--md_path MD_PATH] [--roam_db ROAM_DB]
+</code></pre>
+<br>
+<table>
+<tr><th>Argument</th><th>Description</th></tr>
+<tr><td>--org_path</td><td>Directory containing Org-roam .org files to be converted.</td></tr>
+<tr><td>--md_path</td><td>Destination directory for output MD files. Converted files will be placed here.</td></tr>
+<tr><td>--roam_db</td><td>Path to the Org-roam SQLite database file.</td></tr>
+</table>
 </div>
 <div class="side-links">
 <h2>Links</h2>

@@ -1,0 +1,14 @@
+* roam-export-md
+
+Convert Org-roam database to MarkDown files. This tool reads Org-roam .org files and exports them as MD, preserving internal
+links and structure.
+
+#+begin_src python
+usage: roam-export-md [-h] [--org_path ORG_PATH] [--md_path MD_PATH] [--roam_db ROAM_DB]
+#+end_src
+
+| Argument   | Description                                                                     |
+|------------+---------------------------------------------------------------------------------|
+| --org_path | Directory containing Org-roam .org files to be converted.                       |
+| --md_path  | Destination directory for output MD files. Converted files will be placed here. |
+| --roam_db  | Path to the Org-roam SQLite database file.                                      |

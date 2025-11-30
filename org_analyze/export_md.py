@@ -66,7 +66,7 @@ def run_one(org_file, md_file):
         '--html_path',
         type=str,
         default=HOME + "/OrgAnalyze/tmp/",
-        help="Destination directory for output HTML files. "
+        help="Destination directory for output MD files. "
              "Converted files will be placed here. Default: %(default)s"
     )
     parser.add_argument(
