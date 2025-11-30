@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Org Export</title>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+body { background: #3F3F3F; color: #DCDCCC; font-family: 'Segoe UI', 'Arial', sans-serif; }
+.container { display: flex; flex-direction: row; }
+.main-content { flex: 3; padding: 16px; }
+.side-links { flex: 1; padding: 16px; background: #2B2B2B; color: #93E0E3; min-width: 200px; }
+h1, h2, h3, h4, h5, h6 { color: #F0DFAF; }
+table { background: #4F4F4F; color: #DCDCCC; border-collapse: collapse; }
+th, td { border: 1px solid #6F6F6F; padding: 4px 8px; }
+th { background: #5F5F5F; color: #F0DFAF; }
+pre, code { background: #2B2B2B; color: #CC9393; font-family: 'Fira Mono', 'Consolas', 'Monaco', monospace; }
+.math { background: #2B2B2B; color: #DFAF8F; padding: 8px; display: block; }
+a { color: #93E0E3; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="main-content">
+<h1>RoamDb</h1>
+<br>
+This module provides functionality to read and analyze an org-roam database into pandas DataFrames.    <br>
+<br>
+<h2>Example Usage</h2>
+<br>
+<pre><code class="language-python">
+from org_analyze.RoamDb import RoamDB
+
+HOME = "c:/home/jari/"
+d = RoamDB(HOME+"org-roam/")
+d.load(HOME+".emacs.d/org-roam.db")
+
+df = d.getNodesDf()
+print(df.groupby('category').size().sort_values(ascending=False))
+</code></pre>
+<br>
+</div>
+<div class="side-links">
+<h2>Links</h2>
+</div>
+</div>
+</body>
+</html>

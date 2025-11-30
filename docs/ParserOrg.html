@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Org Export</title>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+body { background: #3F3F3F; color: #DCDCCC; font-family: 'Segoe UI', 'Arial', sans-serif; }
+.container { display: flex; flex-direction: row; }
+.main-content { flex: 3; padding: 16px; }
+.side-links { flex: 1; padding: 16px; background: #2B2B2B; color: #93E0E3; min-width: 200px; }
+h1, h2, h3, h4, h5, h6 { color: #F0DFAF; }
+table { background: #4F4F4F; color: #DCDCCC; border-collapse: collapse; }
+th, td { border: 1px solid #6F6F6F; padding: 4px 8px; }
+th { background: #5F5F5F; color: #F0DFAF; }
+pre, code { background: #2B2B2B; color: #CC9393; font-family: 'Fira Mono', 'Consolas', 'Monaco', monospace; }
+.math { background: #2B2B2B; color: #DFAF8F; padding: 8px; display: block; }
+a { color: #93E0E3; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="main-content">
+<h1>ParserOrg</h1>
+<br>
+Convert org-mode file to python objects for further processing<br>
+<br>
+The parser processes the following org-mode elements, turning them into specific Python objects:<br>
+<br>
+<ul>
+<li>*Headers*: Lines starting with `*`, `**`, etc. are parsed as `OrgHeader` objects.</li>
+<li>*Clock Entries*: Lines starting with `CLOCK:` or `#+CLK:` are parsed as `OrgClock` objects.</li>
+<li>*Tables*: Blocks of lines starting with `|` are parsed into `OrgTable` objects.</li>
+<li>*Source Blocks*: Code blocks delimited by `#+BEGIN_SRC` and `#+END_SRC` are parsed as `OrgSourceBlock`.</li>
+<li>*Math Blocks*: LaTeX math blocks delimited by `\[` and `\]` are parsed as `OrgMath`.</li>
+<li>*Property Drawers*: Blocks delimited by `:PROPERTIES:` and `:END:` are parsed as `OrgProperties`.</li>
+<li>*File Variables*: Lines like `#+TITLE: My Document` are parsed and stored in the parser's `vars` dictionary.</li>
+<li>*Lists*: Lines starting with `-`, `+`, or numbered lists are parsed as `OrgList` objects.</li>
+<li>*Text and Links*: All other lines are treated as plain text (`OrgText`), with org-mode links like `<a href="...">...</a>` being processed.</li>
+</ul>
+</div>
+<div class="side-links">
+<h2>Links</h2>
+</div>
+</div>
+</body>
+</html>

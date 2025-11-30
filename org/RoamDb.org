@@ -1,0 +1,17 @@
+* RoamDb
+
+This module provides functionality to read and analyze an org-roam database into pandas DataFrames.    
+
+** Example Usage
+
+#+begin_src python
+from org_analyze.RoamDb import RoamDB
+
+HOME = "c:/home/jari/"
+d = RoamDB(HOME+"org-roam/")
+d.load(HOME+".emacs.d/org-roam.db")
+
+df = d.getNodesDf()
+print(df.groupby('category').size().sort_values(ascending=False))
+#+end_src
+

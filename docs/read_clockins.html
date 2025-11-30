@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Org Export</title>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+body { background: #3F3F3F; color: #DCDCCC; font-family: 'Segoe UI', 'Arial', sans-serif; }
+.container { display: flex; flex-direction: row; }
+.main-content { flex: 3; padding: 16px; }
+.side-links { flex: 1; padding: 16px; background: #2B2B2B; color: #93E0E3; min-width: 200px; }
+h1, h2, h3, h4, h5, h6 { color: #F0DFAF; }
+table { background: #4F4F4F; color: #DCDCCC; border-collapse: collapse; }
+th, td { border: 1px solid #6F6F6F; padding: 4px 8px; }
+th { background: #5F5F5F; color: #F0DFAF; }
+pre, code { background: #2B2B2B; color: #CC9393; font-family: 'Fira Mono', 'Consolas', 'Monaco', monospace; }
+.math { background: #2B2B2B; color: #DFAF8F; padding: 8px; display: block; }
+a { color: #93E0E3; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="main-content">
+<h1>read_clocking</h1>
+<br>
+This function parses all `*.org` files in a given directory. It extracts all clocking information and associates it with its parent header (Feature) and sub-header (Task).<br>
+<br>
+The function returns a pandas DataFrame. Which contains<br>
+<br>
+<table>
+<tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td>start</td><td>string</td><td>Date in format [year]-[month]-[day]</td></tr>
+<tr><td>duration</td><td>double</td><td>Time spend in this task. The unit is hour</td></tr>
+<tr><td>head1</td><td>string</td><td>Heading level 1 before clockin entry</td></tr>
+<tr><td>head2</td><td>string</td><td>Heading level 2 before clockin entry</td></tr>
+</table>
+<br>
+<h2>Example usage</h2>
+<br>
+Let's say you have an org file <code>tasks.org</code> in a directory called <code>my_orgs</code> with the following content:<br>
+<br>
+<pre><code class="language-text">
+* Feature A
+** Task 1
+CLOCK: [2025-10-25 Sat 10:00]--[2025-10-25 Sat 11:30] =>  1:30
+** Task 2
+CLOCK: [2025-10-25 Sat 12:00]--[2025-10-25 Sat 13:00] =>  1:00
+
+* Feature B
+** Task 3
+CLOCK: [2025-10-25 Sat 14:00]--[2025-10-25 Sat 14:30] =>  0:30
+</code></pre>
+<br>
+<br>
+You can parse this file and analyze the data with pandas like this:<br>
+<br>
+<pre><code class="language-python">
+from org_analyze.clocks import read_clockins
+
+# 1. Parse the org files in the directory
+df = read_clockins('my_orgs')
+
+# 2. Analyze the data: Group by feature (head1) and sum the duration
+feature_hours = df.groupby('head1')['duration'].sum()
+
+print("Total hours per feature:")
+print(feature_hours)
+</code></pre>
+<br>
+Output:<br>
+<br>
+<pre><code class="language-text">
+Total hours per feature:
+head1
+Feature A    2.5
+Feature B    0.5
+Name: duration, dtype: float64
+</code></pre>
+<br>
+<br>
+</div>
+<div class="side-links">
+<h2>Links</h2>
+</div>
+</div>
+</body>
+</html>

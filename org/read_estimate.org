@@ -1,0 +1,3 @@
+* read_estimate
+
+Collect org-mode estimated time entries from multiple files
