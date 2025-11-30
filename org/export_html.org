@@ -1,0 +1,16 @@
+* roam-export-html
+
+Convert Org-roam database to HTML files. This tool reads Org-roam .org files and exports them as HTML, preserving
+internal links and structure.
+
+
+#+begin_src python
+usage: roam-export-html [-h] [--org_path ORG_PATH] [--html_path HTML_PATH] [--roam_db ROAM_DB]
+#+end_src
+
+| Argument    | Description                                                                       |
+|-------------+-----------------------------------------------------------------------------------|
+| --org_path  | Directory containing Org-roam .org files to be converted.                         |
+| --html_path | Destination directory for output HTML files. Converted files will be placed here. |
+| --roam_db   | Path to the Org-roam SQLite database file.                                        |
+|             |                                                                                   |

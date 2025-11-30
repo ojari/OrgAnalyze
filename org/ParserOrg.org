@@ -7,9 +7,26 @@ The parser processes the following org-mode elements, turning them into specific
 - *Headers*: Lines starting with `*`, `**`, etc. are parsed as `OrgHeader` objects.
 - *Clock Entries*: Lines starting with `CLOCK:` or `#+CLK:` are parsed as `OrgClock` objects.
 - *Tables*: Blocks of lines starting with `|` are parsed into `OrgTable` objects.
+
+  | Name | Value |
+  |------+-------|
+  | One  |     1 |
+  | Two  |     2 |
+
 - *Source Blocks*: Code blocks delimited by `#+BEGIN_SRC` and `#+END_SRC` are parsed as `OrgSourceBlock`.
-- *Math Blocks*: LaTeX math blocks delimited by `\[` and `\]` are parsed as `OrgMath`.
+
+#+begin_src python
+for i in range(1,10):
+    print(f"Number is {i}")
+#+end_src
+
+- *Math Blocks*: LaTeX math blocks delimited by `\ [` and `\ ]` are parsed as `OrgMath`.
+
+\[
+\text{Average} = \frac{1}{n} \sum_{i=1}^{n} x_i
+\]
+
 - *Property Drawers*: Blocks delimited by `:PROPERTIES:` and `:END:` are parsed as `OrgProperties`.
 - *File Variables*: Lines like `#+TITLE: My Document` are parsed and stored in the parser's `vars` dictionary.
 - *Lists*: Lines starting with `-`, `+`, or numbered lists are parsed as `OrgList` objects.
-- *Text and Links*: All other lines are treated as plain text (`OrgText`), with org-mode links like `[[...]]` being processed.
+- *Text and Links*: All other lines are treated as plain text (`OrgText`), with org-mode links like [ [ ... ] ] being processed.

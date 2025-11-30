@@ -28,19 +28,50 @@ Convert org-mode file to python objects for further processing<br>
 The parser processes the following org-mode elements, turning them into specific Python objects:<br>
 <br>
 <ul>
-<li>*Headers*: Lines starting with `*`, `**`, etc. are parsed as `OrgHeader` objects.</li>
-<li>*Clock Entries*: Lines starting with `CLOCK:` or `#+CLK:` are parsed as `OrgClock` objects.</li>
-<li>*Tables*: Blocks of lines starting with `|` are parsed into `OrgTable` objects.</li>
-<li>*Source Blocks*: Code blocks delimited by `#+BEGIN_SRC` and `#+END_SRC` are parsed as `OrgSourceBlock`.</li>
-<li>*Math Blocks*: LaTeX math blocks delimited by `\[` and `\]` are parsed as `OrgMath`.</li>
-<li>*Property Drawers*: Blocks delimited by `:PROPERTIES:` and `:END:` are parsed as `OrgProperties`.</li>
-<li>*File Variables*: Lines like `#+TITLE: My Document` are parsed and stored in the parser's `vars` dictionary.</li>
-<li>*Lists*: Lines starting with `-`, `+`, or numbered lists are parsed as `OrgList` objects.</li>
-<li>*Text and Links*: All other lines are treated as plain text (`OrgText`), with org-mode links like `<a href="...">...</a>` being processed.</li>
+<li><strong>Headers</strong>: Lines starting with `<strong>`, `*</strong>`, etc. are parsed as `OrgHeader` objects.</li>
+<li><strong>Clock Entries</strong>: Lines starting with `CLOCK:` or `#+CLK:` are parsed as `OrgClock` objects.</li>
+<li><strong>Tables</strong>: Blocks of lines starting with `|` are parsed into `OrgTable` objects.</li>
+</ul>
+<br>
+<table>
+<tr><th></th><th>Name</th><th>Value</th></tr>
+<tr><td>One</td><td>1</td></tr>
+<tr><td>Two</td><td>2</td></tr>
+</table>
+<br>
+<ul>
+<li><strong>Source Blocks</strong>: Code blocks delimited by `#+BEGIN_SRC` and `#+END_SRC` are parsed as `OrgSourceBlock`.</li>
+</ul>
+<br>
+<pre><code class="language-python">
+for i in range(1,10):
+    print(f"Number is {i}")
+</code></pre>
+<br>
+<ul>
+<li><strong>Math Blocks</strong>: LaTeX math blocks delimited by `\ [` and `\ ]` are parsed as `OrgMath`.</li>
+</ul>
+<br>
+\[
+\text{Average} = \frac{1}{n} \sum_{i=1}^{n} x_i
+\]
+<br>
+<ul>
+<li><strong>Property Drawers</strong>: Blocks delimited by `:PROPERTIES:` and `:END:` are parsed as `OrgProperties`.</li>
+<li><strong>File Variables</strong>: Lines like `#+TITLE: My Document` are parsed and stored in the parser's `vars` dictionary.</li>
+<li><strong>Lists</strong>: Lines starting with `-`, `+`, or numbered lists are parsed as `OrgList` objects.</li>
+<li><strong>Text and Links</strong>: All other lines are treated as plain text (`OrgText`), with org-mode links like [ [ ... ] ] being processed.</li>
 </ul>
 </div>
 <div class="side-links">
 <h2>Links</h2>
+<a href="export_html.html">export_html</a><br>
+<a href="export_md.html">export_md</a><br>
+<a href="index.html">index</a><br>
+<a href="ParserOrg.html">ParserOrg</a><br>
+<a href="read_clockins.html">read_clockins</a><br>
+<a href="read_estimate.html">read_estimate</a><br>
+<a href="RoamDb.html">RoamDb</a><br>
 </div>
 </div>
 </body>
