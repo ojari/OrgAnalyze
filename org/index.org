@@ -7,3 +7,4 @@ Features
  - [[file:export_html.org][export html]]
  - [[file:export_md.org][export markdown]]
  
+This site is generated from org-mode files that can be find at [[https://github.com/ojari/OrgAnalyze/tree/main/org][org files]].

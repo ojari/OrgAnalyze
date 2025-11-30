@@ -23,7 +23,7 @@ version = read_version()
 setup(
     name="org_analyze",
     version=read_version(),
-    description="Collect data from org-mode/org-roam pages and do some simple analyzing it.",
+    description="A toolkit for extracting, analyzing, and exporting data from org-mode/org-roam notes, with support for HTML and Markdown export. See https://ojari.github.io/OrgAnalyze/ for example HTML export.",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     author="Jari Ojanen",
@@ -43,7 +43,6 @@ setup(
         'console_scripts': [
             'roam-export-html=org_analyze.export_html:main', # module:function
             'roam-export-md=org_analyze.export_md:main'
-          ],
-      },
-    
+        ],
+    },
 )
