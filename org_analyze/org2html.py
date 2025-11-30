@@ -11,6 +11,8 @@ def link_converter(link: str, name: str) -> str:
 
 
 def html_file(dest_path, filename) -> str:
+    if dest_path is None or dest_path == "":
+        return filename.replace(".org", ".html")
     return dest_path + filename.replace(".org", ".html")
 
 

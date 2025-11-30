@@ -160,6 +160,22 @@ class OrgElementParser:
     def parse(self, line: str, file) -> object:
         raise NotImplementedError
 
+    def replace_inline_code(self, line: str) -> str:
+        # Replace ~...~ with `...`
+        def repl(m):
+            return self.formatter.inline_code(m.group(1))
+        return re.sub(r'~([^~]+)~', repl, line)
+
+    def replace_bold(self, line: str) -> str:
+        # Replace *bold* with **bold**, but not at the start of the line (to avoid headers)
+        def repl(m):
+            return self.formatter.bold(m.group(1))
+        return re.sub(r'\*(\S(?:.*?\S)?)\*(?!\*)', repl, line)
+
+    def parse_line(self, line: str) -> str:
+        """Parse a single line and return the processed line."""
+        return self.replace_bold(self.replace_inline_code(line))
+
 class OrgHeaderParser(OrgElementParser):
     def __init__(self, cb_parse_links):
         super().__init__(cb_parse_links)
@@ -209,13 +225,14 @@ class OrgPropertiesParser(OrgElementParser):
             return True,True
 
 class OrgListParser(OrgElementParser):
-    def __init__(self, cb_parse_links):
+    def __init__(self, cb_parse_links, formatter):
         super().__init__(cb_parse_links)
-    def can_parse(self, line): return line.startswith("- ")
-    def parse(self, line):        return OrgList(self.parse_links(line[2:]))
+        self.formatter = formatter
+    def can_parse(self, line): return line.startswith("- ") or line.startswith("+ ")
+    def parse(self, line):        return OrgList(self.parse_line(self.parse_links(line[2:])))
     def can_cont(self, line, obj):
         if line.startswith("- "):
-            obj.add(self.parse_links(line[2:]))
+            obj.add(self.parse_line(self.parse_links(line[2:])))
             return True,True
         else:
             return False,False
@@ -229,21 +246,6 @@ class OrgTextParser(OrgElementParser):
     def can_cont(self, line: str, obj) -> Tuple[bool, bool]:  # continue, line consumed
         return False, False
 
-    def replace_inline_code(self, line: str) -> str:
-        # Replace ~...~ with `...`
-        def repl(m):
-            return self.formatter.inline_code(m.group(1))
-        return re.sub(r'~([^~]+)~', repl, line)
-
-    def replace_bold(self, line: str) -> str:
-        # Replace *bold* with **bold**, but not at the start of the line (to avoid headers)
-        def repl(m):
-            return self.formatter.bold(m.group(1))
-        return re.sub(r'(?<!^)\*(\S(.*?\S)?)\*(?!\*)', repl, line)
-
-    def parse_line(self, line: str) -> str:
-        """Parse a single line and return the processed line."""
-        return self.replace_bold(self.replace_inline_code(line))
 
 class OrgTableParser(OrgElementParser):
     def __init__(self, cb_parse_links):
@@ -355,7 +357,7 @@ class ParserOrg:
             OrgCodeParser(self.parse_links),
             OrgMathParser(self.parse_links),
             OrgPropertiesParser(self.parse_links),
-            OrgListParser(self.parse_links),
+            OrgListParser(self.parse_links, self.formatter),
             OrgTableParser(self.parse_links),
             OrgPropertyLineParser(self.parse_links),
             OrgTextParser(self.parse_links, self.formatter)  # this must be last
