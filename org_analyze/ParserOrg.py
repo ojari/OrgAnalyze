@@ -132,6 +132,17 @@ class OrgList:
     def __repr__(self) -> str:
         return f"<List '{self.lines}'>"
 
+class OrgDefList:
+    """Represents a list item."""
+    def __init__(self, term: str, definition: str) -> None:
+        self.items = [[term, definition]]
+
+    def add(self, term: str, definition: str) -> None:
+        self.items.append([term, definition])
+
+    def __repr__(self) -> str:
+        return f"<DefList '{self.items}'>"
+
 class OrgPropValue:
     """Represents a property value (outside property block)"""
     property_re = re.compile(r"^:([a-zA-Z0-9_\-]+):\s*(.*)")
@@ -236,6 +247,27 @@ class OrgListParser(OrgElementParser):
             return True,True
         else:
             return False,False
+
+class OrgDefListParser(OrgElementParser):
+    def __init__(self, cb_parse_links, formatter):
+        super().__init__(cb_parse_links)
+        self.formatter = formatter
+    def can_parse(self, line): return (line.startswith("- ") or line.startswith("+ ")) and (" :: " in line)
+    def parse(self, line):
+        term, definition = self._parse_term(line[2:]) 
+        return OrgDefList(term, definition)
+    def can_cont(self, line, obj):
+        if (line.startswith("- ") or line.startswith("+ ")) and (" :: " in line):
+            term, definition = self._parse_term(line[2:])
+            obj.add(term, definition)
+            return True,True
+        else:
+            return False,False
+    def _parse_term(self, line: str) -> str:
+        if "::" in line:
+            term, definition = line.split(" :: ", 1)
+            return term, self.parse_line(self.parse_links(definition))
+        return "", line.strip()
 
 class OrgTextParser(OrgElementParser):
     def __init__(self, cb_parse_links, formatter):
@@ -357,6 +389,7 @@ class ParserOrg:
             OrgCodeParser(self.parse_links),
             OrgMathParser(self.parse_links),
             OrgPropertiesParser(self.parse_links),
+            OrgDefListParser(self.parse_links, self.formatter),
             OrgListParser(self.parse_links, self.formatter),
             OrgTableParser(self.parse_links),
             OrgPropertyLineParser(self.parse_links),
