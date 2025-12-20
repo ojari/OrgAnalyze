@@ -31,7 +31,7 @@ class MarkdownConverter:
         print(f"Processing file: {org_file} -> {md_file}")
         self.builder.clear()
         with open(md_file, "w", encoding="utf-8") as md_file_obj:
-            for line in export(org_file, self.link_converter, self.roam, self.dest_path, self.formatter, self.builder):
+            for line in export(org_file, self.link_converter, self.roam, self.formatter, self.builder):
                 if isinstance(line, list):
                     md_file_obj.write("\n".join(line))
                     md_file_obj.write("\n")

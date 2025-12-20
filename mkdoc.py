@@ -32,9 +32,10 @@ class HtmlConverter:
         return link, name
 
     def handle_file(self, org_file: str, md_file: str) -> None:
+        formatter = HtmlConverter()
         print(f"Processing file: {org_file} -> {md_file}")
         with open(md_file, "w", encoding="utf-8") as md_file_obj:
-            for line in export_html(org_file, self.link_converter, self.roam, None):
+            for line in export_html(org_file, self.link_converter, self.roam, formatter=formatter):
                 if isinstance(line, list):
                     md_file_obj.write("\n".join(line))
                     md_file_obj.write("\n")
@@ -46,7 +47,7 @@ def main():
     roam_db = DummmyRoamDB(org_path)
     converter = HtmlConverter(org_path, roam_db)
     for file in roam_db.files:
-        print(file)
+        print(":::"+file)
         html_filename = "docs/" + file.replace(".org", ".html")
         converter.handle_file(org_path + file, html_filename)
 

@@ -63,9 +63,25 @@ class MarkdownFormatter(Formatter):
         return None
 
 class HtmlFormatter(Formatter):
+    def __init__(self):
+        self.curdir=""
+
+    def relativeUrl(self, url: str, curdir:str):
+        if len(curdir) == 0:
+            return url
+        if url.startswith("https://") or url.startswith("http://"):
+            return url
+        if url.startswith(curdir+"/"):
+            return url[len(curdir)+1:]
+        if "/" in url:
+            return ("../" + url)
+        return url
+
     def link(self, url: str, name: str) -> str:
         if name is None:
             return f"<a href=\"{url}\">{url}</a>"
+
+        url = self.relativeUrl(url, self.curdir)
         return f"<a href=\"{url}\">{name}</a>"
 
     def bold(self, text: str) -> str:

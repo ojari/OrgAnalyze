@@ -1,5 +1,5 @@
 from re import I
-from .ParserOrg import ParserOrg, OrgHeader, OrgClock, OrgTable, OrgSourceBlock, OrgText, OrgMath, OrgProperties, OrgList
+from .ParserOrg import OrgDefList, ParserOrg, OrgHeader, OrgClock, OrgTable, OrgSourceBlock, OrgText, OrgMath, OrgProperties, OrgList
 from .Formatter import HtmlFormatter
 from .PageBuilder import PageBuilder, HtmlPageBuilder
 from typing import List, Sequence, Tuple, Union, Optional
@@ -10,13 +10,11 @@ def link_converter(link: str, name: str) -> str:
     return f"<a href=\"{link}\">{name}</a>"
 
 
-def html_file(dest_path, filename) -> str:
-    if dest_path is None or dest_path == "":
-        return filename.replace(".org", ".html")
-    return dest_path + filename.replace(".org", ".html")
+def html_file(filename: str) -> str:
+    return filename.replace(".org", ".html")
 
 
-def export_html(orgfile: str, lnconv=None, roam=None, dest_path="", formatter=None, builder=None) -> List[str]:
+def export_html(orgfile: str, lnconv=None, roam=None, formatter=None, builder=None) -> List[str]:
     builder : PageBuilder = builder or HtmlPageBuilder("Org Export")
     if lnconv is None:
         lnconv = link_converter
@@ -48,19 +46,22 @@ def export_html(orgfile: str, lnconv=None, roam=None, dest_path="", formatter=No
                 result.append(formatter.code(item.lines, 'math'))
             elif isinstance(item, OrgList):
                 result.append(formatter.list(item.lines))
+            elif isinstance(item, OrgDefList):
+                outlst = [formatter.bold(term) + ": " + definition for term, definition in item.items]
+                result.append(formatter.list(outlst))
         builder.add_main_content(result)
 
         links = []
         tags = []
         if roam is not None:
             for node in roam.get_links(orgfile):
-                url = html_file(dest_path, node.file)
+                url = html_file(node.file)
                 links.append(formatter.text_line(formatter.link(url, node.title)))
             
             node = roam.filename2node(orgfile)
             if node is not None:
                 for t in node.tags:
-                    tag_list = [(html_file(dest_path, items[0]), items[1]) for items in roam.get_files_by_tag(t)]
+                    tag_list = [(html_file(items[0]), items[1]) for items in roam.get_files_by_tag(t)]
                     builder.add_tags(t, tag_list)
         builder.side_links.extend(links)
     return builder.render(formatter)
