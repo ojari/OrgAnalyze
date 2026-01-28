@@ -10,7 +10,8 @@ from org_analyze.ParserOrg import (
     OrgProperties,
     OrgSourceBlock,
     OrgMath,
-    OrgClock
+    OrgClock,
+    OrgDefList
 )
 
 class OrgFileHelper:
@@ -19,6 +20,7 @@ class OrgFileHelper:
         self.content = content
         self.path = None
         self.items = None
+        self.parser = None
 
     def link_converter(self, link: str, name: str) -> str:
         return f"url({link})", f"name({name})"
@@ -29,8 +31,8 @@ class OrgFileHelper:
         tmp.flush()
         tmp.close()
         self.path = tmp.name
-        with ParserOrg(self.path, self.link_converter) as parser:
-            self.items = parser.parse()
+        self.parser = ParserOrg(self.path, self.link_converter)
+        self.items = self.parser.parse()
         return self
 
     def __exit__(self, exc_type, exc, tb):
@@ -43,7 +45,6 @@ def test_headers_and_text():
 Some text.
 ** Subheading
 More text.
-
 """
     with OrgFileHelper(content) as org:
         assert any(isinstance(i, OrgHeader) and i.name == "Heading 1" for i in org.items)
@@ -144,3 +145,44 @@ def test_link_list():
         lst = [i for i in org.items if isinstance(i, OrgList)]
         assert lst[0].lines[0] == "[name(Example Link)](url(http://example.com))"
         assert lst[0].lines[1] == "another"
+
+def test_def_list():
+    content = """* Definition List
+- term1 :: def1
+- term2 :: def2
+"""
+    with OrgFileHelper(content) as org:
+        deflists = [i for i in org.items if isinstance(i, OrgDefList)]
+        assert len(deflists) == 1
+        deflist = deflists[0]
+        assert deflist.items[0] == ["term1", "def1"]
+        assert deflist.items[1] == ["term2", "def2"]
+
+def test_table_get_dict_rows():
+    content = """* Table Example
+| Name | Value |
+|------|-------|
+| Foo  | 123   |
+| Bar  | 456   |
+"""
+    with OrgFileHelper(content) as org:
+        tables = [i for i in org.items if isinstance(i, OrgTable)]
+        assert len(tables) == 1
+        table = tables[0]
+        dict_rows = table.getDictRows()
+        assert dict_rows == [
+            {"Name": "Foo", "Value": "123"},
+            {"Name": "Bar", "Value": "456"},
+        ]
+
+def test_file_property():
+    content = """#+TITLE: My Test Document
+#+AUTHOR: Me
+* A Header
+Some text
+"""
+    with OrgFileHelper(content) as org:
+        assert org.parser.vars.get("title") == "My Test Document"
+        assert org.parser.vars.get("author") == "Me"
+        assert len(org.items) == 2 # Header and text
+

@@ -160,6 +160,15 @@ class OrgPropValue:
     def __repr__(self) -> str:
         return f"<Properties lines={len(self.values.keys())}>"
 
+class OrgFileProperty:
+    """Represents a file property like #+TITLE: My document"""
+    def __init__(self, key: str, value: str) -> None:
+        self.key = key
+        self.value = value
+
+    def __repr__(self) -> str:
+        return f"<OrgFileProperty {self.key}={self.value}>"
+
 #-------------------------------------------------------------------------------------------------
 class OrgElementParser:
     def __init__(self, cb_parse_links) -> None:
@@ -305,14 +314,13 @@ class OrgTableParser(OrgElementParser):
 class OrgPropertyLineParser(OrgElementParser):
     def __init__(self, cb_parse_links):
         super().__init__(cb_parse_links)
-        self.vars = {}
 
     def can_parse(self, line):  return line.startswith("#+")
     def parse(self, line):
         tail = line[2:]
         if ":" in tail:
             name, value = tail.split(":", 1)
-            self.vars[name.strip().lower()] = value.strip()
+            return OrgFileProperty(name.strip().lower(), value.strip())
         return None
 
 #-------------------------------------------------------------------------------------------------
@@ -345,6 +353,7 @@ class ParserOrg:
             self._own_file = False
 
         self.items: List[object] = []
+        self.vars = {}
         self.link_converter = link_converter
         self.formatter = formatter or MarkdownFormatter()
 
@@ -383,6 +392,7 @@ class ParserOrg:
         """
         # Reset state
         self.items = []
+        self.vars = {}
         self.parsers = [
             OrgHeaderParser(self.parse_links),
             OrgClockParser(self.parse_links),
@@ -417,7 +427,10 @@ class ParserOrg:
                     active_parser = parser
 
                     data = parser.parse(line)
-                    if data is not None:
+                    if isinstance(data, OrgFileProperty):
+                        self.vars[data.key] = data.value
+                        active_parser = None
+                    elif data is not None:
                         self.items.append(data)
                     break
         self.close()
