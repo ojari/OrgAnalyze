@@ -25,6 +25,7 @@ class MarkdownConverter:
         self.formatter.curdir = cd
 
     def link_converter(self, link: str, name: str) -> str:
+        # print(f"Converting link: {link} with name: {name}")
         if link.startswith("id:"):
             _, hash = link.split(":", 1)
             roam_node = self.roam.id2node(hash)

@@ -1,6 +1,4 @@
-# Converts Org-roam database to Markdown files.
-#
-from .org2html import export_html as export
+from .ParserOrg import ParserOrg
 from .RoamDb import RoamDB
 from .Formatter import MarkdownFormatter
 from .PageBuilder import PageBuilder, MarkdownPageBuilder
@@ -23,20 +21,20 @@ class MarkdownConverter:
             roam_node = self.roam.id2node(hash)
             if roam_node is not None:
                 fname = self.dest_path + roam_node.file.replace(".org", EXTENSION)
-                return fname, name
-            return name, None
-        return link, name
+                return self.formatter.link(fname, name)
+            return name
+        return self.formatter.link(link, name)
 
     def handle_file(self, org_file: str, md_file: str) -> None:
         print(f"Processing file: {org_file} -> {md_file}")
         self.builder.clear()
         with open(md_file, "w", encoding="utf-8") as md_file_obj:
-            for line in export(org_file, self.link_converter, self.roam, self.formatter, self.builder):
-                if isinstance(line, list):
-                    md_file_obj.write("\n".join(line))
-                    md_file_obj.write("\n")
-                else:
-                    md_file_obj.write(line+"\n")
+            with ParserOrg(org_file, self.link_converter, self.roam, self.formatter, self.builder) as p:
+                for item in p.parse():
+                    formatted_item = item.format(self.formatter)
+                    if formatted_item:
+                        md_file_obj.write(formatted_item)
+                        md_file_obj.write("\n")
 
 
 def create_folders(files: List[str]):
@@ -128,3 +126,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

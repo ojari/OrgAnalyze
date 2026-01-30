@@ -23,7 +23,9 @@ class OrgFileHelper:
         self.parser = None
 
     def link_converter(self, link: str, name: str) -> str:
-        return f"url({link})", f"name({name})"
+        # With the recent changes, this should return a formatted string.
+        # The test will use MarkdownFormatter by default.
+        return f"[{name}]({link})"
 
     def __enter__(self):
         tmp = tempfile.NamedTemporaryFile("w+", delete=False, suffix=".org", encoding="utf-8")
@@ -126,7 +128,7 @@ def test_link():
 """
     with OrgFileHelper(content) as org:
         text = [i for i in org.items if isinstance(i, OrgText)]
-        assert text[0].line == " [name(Example Link)](url(http://example.com))"
+        assert text[0].line == " [Example Link](http://example.com)"
 
 def test_link_header():
     content = """** [[http://example.com][Example Link]]
@@ -134,7 +136,7 @@ def test_link_header():
     with OrgFileHelper(content) as org:
         headers = [i for i in org.items if isinstance(i, OrgHeader)]
         assert headers[0].level == 2
-        assert headers[0].name == "[name(Example Link)](url(http://example.com))"
+        assert headers[0].name == "[Example Link](http://example.com)"
 
 def test_link_list():
     content = """* List with link
@@ -143,7 +145,7 @@ def test_link_list():
 """
     with OrgFileHelper(content) as org:
         lst = [i for i in org.items if isinstance(i, OrgList)]
-        assert lst[0].lines[0] == "[name(Example Link)](url(http://example.com))"
+        assert lst[0].lines[0] == "[Example Link](http://example.com)"
         assert lst[0].lines[1] == "another"
 
 def test_def_list():

@@ -7,6 +7,8 @@ from typing import List, Sequence, Tuple, Union, Optional
 def link_converter(link: str, name: str) -> str:
     if link.startswith("id:"):
         return f"<a href=\"{name}.html\">{name}</a>"
+    elif link.startswith("file:"):
+        return f"<img src=\"{link[5:]}\" alt=\"{name}\">"
     return f"<a href=\"{link}\">{name}</a>"
 
 

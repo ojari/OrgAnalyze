@@ -13,10 +13,14 @@ import re
 from sqlite3 import DateFromTicks
 from typing import IO, List, Sequence, Tuple, Union, Optional
 import os
-from .Formatter import MarkdownFormatter
+from .Formatter import Formatter
 
 
-class OrgHeader:
+class OrgItemBase:
+    def format(self, formatter: "Formatter"):
+        return ""
+
+class OrgHeader(OrgItemBase):
     """Represents an org-mode header (a line starting with one or more '*')."""
     header_re = re.compile(r"^(\*+)\s+(?:TODO\s+|DONE\s+)?(.*)")
 
@@ -31,8 +35,11 @@ class OrgHeader:
 
     def __repr__(self) -> str:
         return f"<H{self.level} {self.name!r}>"
+    
+    def format(self, formatter: "Formatter"):
+        return formatter.header(self.name, self.level)
 
-class OrgClock:
+class OrgClock(OrgItemBase):
     """Represents a CLOCK entry."""
     clock_re = re.compile(r"CLOCK: \[(\d{4}-\d{2}-\d{2}) [^\]]+\]--\[.*?\] =>\s+([\d:]+)")
     clk_re = re.compile(
@@ -50,7 +57,7 @@ class OrgClock:
     def __repr__(self) -> str:
         return f"<Clock {self.start} {self.duration}>"
 
-class OrgTable:
+class OrgTable(OrgItemBase):
     """Simple container for table rows. Rows are lists of cell strings."""
     def __init__(self, row: Sequence[str]) -> None:
         self.rows: List[List[str]] = [list(row)]
@@ -72,7 +79,10 @@ class OrgTable:
     def __repr__(self) -> str:
         return f"<Table rows={len(self.rows)}>"
 
-class OrgSourceBlock:
+    def format(self, formatter: "Formatter"):
+        return formatter.table(self.rows)
+
+class OrgSourceBlock(OrgItemBase):
     """Represents a source code block."""
     def __init__(self, line: str) -> None:
         self.lines = []
@@ -84,7 +94,10 @@ class OrgSourceBlock:
     def __repr__(self) -> str:
         return f"<SourceBlock lang={self.language} lines={len(self.lines)}>"
 
-class OrgText:
+    def format(self, formatter: "Formatter"):
+        return formatter.code(self.lines, self.language)
+
+class OrgText(OrgItemBase):
     """Represents a plain text paragraph."""
     def __init__(self, line: str) -> None:
         self.line = line
@@ -92,7 +105,10 @@ class OrgText:
     def __repr__(self) -> str:
         return f"<Text '{self.line}'>"
 
-class OrgMath:
+    def format(self, formatter: "Formatter"):
+        return formatter.text_line(self.line)
+
+class OrgMath(OrgItemBase):
     """Represents a math block."""
     def __init__(self) -> None:
         self.lines = []
@@ -103,7 +119,10 @@ class OrgMath:
     def __repr__(self) -> str:
         return f"<Math lines={len(self.lines)}>"
 
-class OrgProperties:
+    def format(self, formatter: "Formatter"):
+        return formatter.code(self.lines, 'math')
+
+class OrgProperties(OrgItemBase):
     """Represents a PROPERTIES block."""
     property_re = re.compile(r"^:([a-zA-Z0-9_\-]+):\s*(.*)")
     def __init__(self) -> None:
@@ -120,7 +139,7 @@ class OrgProperties:
     def __repr__(self) -> str:
         return f"<Properties lines={len(self.values.keys())}>"
 
-class OrgList:
+class OrgList(OrgItemBase):
     """Represents a list item."""
     def __init__(self, line: str) -> None:
         self.lines = [line]
@@ -132,7 +151,10 @@ class OrgList:
     def __repr__(self) -> str:
         return f"<List '{self.lines}'>"
 
-class OrgDefList:
+    def format(self, formatter: "Formatter"):
+        return formatter.list(self.lines)
+
+class OrgDefList(OrgItemBase):
     """Represents a list item."""
     def __init__(self, term: str, definition: str) -> None:
         self.items = [[term, definition]]
@@ -143,7 +165,10 @@ class OrgDefList:
     def __repr__(self) -> str:
         return f"<DefList '{self.items}'>"
 
-class OrgPropValue:
+    def format(self, formatter: "Formatter"):
+        return formatter.definition_list(self.items)
+
+class OrgPropValue(OrgItemBase):
     """Represents a property value (outside property block)"""
     property_re = re.compile(r"^:([a-zA-Z0-9_\-]+):\s*(.*)")
     def __init__(self) -> None:
@@ -160,7 +185,7 @@ class OrgPropValue:
     def __repr__(self) -> str:
         return f"<Properties lines={len(self.values.keys())}>"
 
-class OrgFileProperty:
+class OrgFileProperty(OrgItemBase):
     """Represents a file property like #+TITLE: My document"""
     def __init__(self, key: str, value: str) -> None:
         self.key = key
@@ -171,8 +196,9 @@ class OrgFileProperty:
 
 #-------------------------------------------------------------------------------------------------
 class OrgElementParser:
-    def __init__(self, cb_parse_links) -> None:
+    def __init__(self, cb_parse_links, formatter: Formatter) -> None:
         self.parse_links = cb_parse_links
+        self.formatter = formatter
     def can_parse(self, line: str) -> bool:
         raise NotImplementedError
     def can_cont(self, line: str, obj) -> Tuple[bool, bool]:  # continue, line consumed
@@ -194,23 +220,23 @@ class OrgElementParser:
 
     def parse_line(self, line: str) -> str:
         """Parse a single line and return the processed line."""
-        return self.replace_bold(self.replace_inline_code(line))
+        return self.replace_bold(self.replace_inline_code(self.parse_links(line)))
 
 class OrgHeaderParser(OrgElementParser):
-    def __init__(self, cb_parse_links):
-        super().__init__(cb_parse_links)
+    def __init__(self, cb_parse_links, formatter):
+        super().__init__(cb_parse_links, formatter)
     def can_parse(self, line): return line.startswith("*")
-    def parse(self, line):     return OrgHeader(self.parse_links(line))
+    def parse(self, line):     return OrgHeader(self.parse_line(line))
 
 class OrgClockParser(OrgElementParser):
-    def __init__(self, cb_parse_links):
-        super().__init__(cb_parse_links)
+    def __init__(self, cb_parse_links, formatter):
+        super().__init__(cb_parse_links, formatter)
     def can_parse(self, line): return line.startswith("CLOCK:") or line.startswith("#+CLK:")
     def parse(self, line):     return OrgClock(line)
 
 class OrgCodeParser(OrgElementParser):
-    def __init__(self, cb_parse_links):
-        super().__init__(cb_parse_links)
+    def __init__(self, cb_parse_links, formatter):
+        super().__init__(cb_parse_links, formatter)
     def can_parse(self, line): return line.lower().startswith("#+begin_src")
     def parse(self, line):     return OrgSourceBlock(line)
     def can_cont(self, line, obj):
@@ -221,8 +247,8 @@ class OrgCodeParser(OrgElementParser):
             return True,True
 
 class OrgMathParser(OrgElementParser):
-    def __init__(self, cb_parse_links):
-        super().__init__(cb_parse_links)
+    def __init__(self, cb_parse_links, formatter):
+        super().__init__(cb_parse_links, formatter)
     def can_parse(self, line): return line.strip() == "\\["
     def parse(self, _):        return OrgMath()
     def can_cont(self, line, obj):
@@ -233,8 +259,8 @@ class OrgMathParser(OrgElementParser):
             return True,True
 
 class OrgPropertiesParser(OrgElementParser):
-    def __init__(self, cb_parse_links):
-        super().__init__(cb_parse_links)
+    def __init__(self, cb_parse_links, formatter):
+        super().__init__(cb_parse_links, formatter)
     def can_parse(self, line): return line.strip() == ":PROPERTIES:"
     def parse(self, _):        return OrgProperties()
     def can_cont(self, line, obj):
@@ -246,21 +272,19 @@ class OrgPropertiesParser(OrgElementParser):
 
 class OrgListParser(OrgElementParser):
     def __init__(self, cb_parse_links, formatter):
-        super().__init__(cb_parse_links)
-        self.formatter = formatter
-    def can_parse(self, line): return line.startswith("- ") or line.startswith("+ ")
-    def parse(self, line):        return OrgList(self.parse_line(self.parse_links(line[2:])))
+        super().__init__(cb_parse_links, formatter)
+    def can_parse(self, line): return (line.startswith("- ") or line.startswith("+ ")) and not (" :: " in line)
+    def parse(self, line):        return OrgList(self.parse_line(line[2:]))
     def can_cont(self, line, obj):
-        if line.startswith("- "):
-            obj.add(self.parse_line(self.parse_links(line[2:])))
+        if (line.startswith("- ") or line.startswith("+ ")) and not (" :: " in line):
+            obj.add(self.parse_line(line[2:]))
             return True,True
         else:
             return False,False
 
 class OrgDefListParser(OrgElementParser):
     def __init__(self, cb_parse_links, formatter):
-        super().__init__(cb_parse_links)
-        self.formatter = formatter
+        super().__init__(cb_parse_links, formatter)
     def can_parse(self, line): return (line.startswith("- ") or line.startswith("+ ")) and (" :: " in line)
     def parse(self, line):
         term, definition = self._parse_term(line[2:]) 
@@ -275,22 +299,21 @@ class OrgDefListParser(OrgElementParser):
     def _parse_term(self, line: str) -> str:
         if "::" in line:
             term, definition = line.split(" :: ", 1)
-            return term, self.parse_line(self.parse_links(definition))
+            return term, self.parse_line(definition)
         return "", line.strip()
 
 class OrgTextParser(OrgElementParser):
     def __init__(self, cb_parse_links, formatter):
-        super().__init__(cb_parse_links)
-        self.formatter = formatter
+        super().__init__(cb_parse_links, formatter)
     def can_parse(self, line): return True
-    def parse(self, line):     return OrgText(self.parse_line(self.parse_links(line)))
+    def parse(self, line):     return OrgText(self.parse_line(line))
     def can_cont(self, line: str, obj) -> Tuple[bool, bool]:  # continue, line consumed
         return False, False
 
 
 class OrgTableParser(OrgElementParser):
-    def __init__(self, cb_parse_links):
-        super().__init__(cb_parse_links)
+    def __init__(self, cb_parse_links, formatter):
+        super().__init__(cb_parse_links, formatter)
     def can_parse(self, line):  return line.lstrip().startswith("|")
     def parse(self, line):      return OrgTable(self.parse_row(line))
 
@@ -312,8 +335,8 @@ class OrgTableParser(OrgElementParser):
         return [self.parse_links(c.strip()) for c in core.split("|")]
 
 class OrgPropertyLineParser(OrgElementParser):
-    def __init__(self, cb_parse_links):
-        super().__init__(cb_parse_links)
+    def __init__(self, cb_parse_links, formatter):
+        super().__init__(cb_parse_links, formatter)
 
     def can_parse(self, line):  return line.startswith("#+")
     def parse(self, line):
@@ -355,7 +378,7 @@ class ParserOrg:
         self.items: List[object] = []
         self.vars = {}
         self.link_converter = link_converter
-        self.formatter = formatter or MarkdownFormatter()
+        self.formatter = formatter
 
     def __enter__(self) -> "ParserOrg":
         return self
@@ -379,8 +402,9 @@ class ParserOrg:
             link = m.group(1)
             name = m.group(2) if m.group(2) is not None else link
 
-            link2, name2 = self.link_converter(link, name)
-            return self.formatter.link(link2, name2)
+            if self.link_converter:
+                return self.link_converter(link, name)[1]
+            return name
 
         return self.org_link_re.sub(repl, line)
 
@@ -394,15 +418,15 @@ class ParserOrg:
         self.items = []
         self.vars = {}
         self.parsers = [
-            OrgHeaderParser(self.parse_links),
-            OrgClockParser(self.parse_links),
-            OrgCodeParser(self.parse_links),
-            OrgMathParser(self.parse_links),
-            OrgPropertiesParser(self.parse_links),
+            OrgHeaderParser(self.parse_links, self.formatter),
+            OrgClockParser(self.parse_links, self.formatter),
+            OrgCodeParser(self.parse_links, self.formatter),
+            OrgMathParser(self.parse_links, self.formatter),
+            OrgPropertiesParser(self.parse_links, self.formatter),
             OrgDefListParser(self.parse_links, self.formatter),
             OrgListParser(self.parse_links, self.formatter),
-            OrgTableParser(self.parse_links),
-            OrgPropertyLineParser(self.parse_links),
+            OrgTableParser(self.parse_links, self.formatter),
+            OrgPropertyLineParser(self.parse_links, self.formatter),
             OrgTextParser(self.parse_links, self.formatter)  # this must be last
         ]   
 
@@ -418,7 +442,7 @@ class ParserOrg:
                 if not cont:
                     active_parser = None
                     if consumed:
-                        line = self._f.readline().rstrip("\n")
+                        continue
                 else:
                     continue  # do not change parser
 
@@ -435,3 +459,4 @@ class ParserOrg:
                     break
         self.close()
         return self.items
+
